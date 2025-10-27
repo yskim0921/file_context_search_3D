@@ -41,14 +41,16 @@
                 <table class="vectorstore-table">
                     <thead>
                         <tr>
+                            <th style="width: 150px;">순번</th>
                             <th>폴더명</th>
                             <th>문서수량</th>
                             <th>생성날짜</th>
+                            <th>상태</th>
                         </tr>
                     </thead>
                     <tbody id="vectorstoreTableBody">
                         <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -91,32 +93,95 @@
                 const data = await response.json();
                 
                 if (data.success && data.folders.length > 0) {
-                    const rowsHTML = data.folders.map((folder, index) => `
-                        <tr data-index="${index}">
+                    // 데이터를 전역 변수에 저장
+                    window.vectorstoreData = data.folders;
+                    
+                    const rowsHTML = data.folders.map((folder, index) => {
+                        const displayId = index === 0 
+                            ? `<span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">최신</span>`
+                            : folder.id;
+                        
+                        // 첫 번째 행(최신)은 운영중 버튼, 나머지는 삭제 버튼
+                        const buttonHtml = index === 0
+                            ? `<button onclick="alert('현재 운영중인 벡터스토어 입니다.'); return false;" style="padding: 8px 16px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; box-shadow: 0 2px 4px rgba(17, 153, 142, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(17, 153, 142, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(17, 153, 142, 0.3)';">
+                                    ✅ 운영중
+                                </button>`
+                            : `<button onclick="deleteVectorStore(${folder.id})" style="padding: 8px 16px; background: #f5576c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.background='#e0485c'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='#f5576c'; this.style.transform='translateY(0)';">
+                                    🗑️ 삭제
+                                </button>`;
+                        
+                        return `
+                        <tr data-index="${index}" data-folder-id="${folder.id}">
+                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${displayId}</td>
                             <td>${folder.name}</td>
                             <td>${folder.fileCount}개</td>
                             <td>${folder.date}</td>
+                            <td style="text-align: center;">
+                                ${buttonHtml}
+                            </td>
                         </tr>
-                    `).join('');
+                        `;
+                    }).join('');
                     vectorstoreTableBody.innerHTML = rowsHTML;
                     
                     // 클릭 이벤트 추가
                     vectorstoreTableBody.querySelectorAll('tr').forEach(row => {
-                        row.addEventListener('click', function() {
+                        row.addEventListener('click', function(e) {
+                            // 버튼 클릭 시에는 행 선택 동작 안 함
+                            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                                return;
+                            }
+                            
                             // 이전 선택 제거
                             vectorstoreTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
                             // 현재 행 선택
                             this.classList.add('selected');
                         });
                     });
+                    
+                    // 첫 번째 행(최신) 자동 선택
+                    const firstRow = vectorstoreTableBody.querySelector('tr');
+                    if (firstRow) {
+                        firstRow.classList.add('selected');
+                    }
                 } else {
-                    vectorstoreTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">생성된 벡터스토어가 없습니다.</td></tr>';
+                    vectorstoreTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">생성된 벡터스토어가 없습니다.</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading vectorstore list:', error);
-                vectorstoreTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: red;">목록을 불러오는데 실패했습니다.</td></tr>';
+                vectorstoreTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">목록을 불러오는데 실패했습니다.</td></tr>';
             }
         }
+
+        // 벡터스토어 삭제 함수 (전역으로 등록)
+        window.deleteVectorStore = async function(folderId) {
+            const folderName = window.vectorstoreData?.find(f => f.id === folderId)?.name || '';
+            
+            // 확인 다이얼로그
+            const confirmed = confirm(`정말로 "${folderName}" 벡터스토어를 삭제하시겠습니까?`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete-vectorstore/${folderId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ 벡터스토어가 삭제되었습니다.');
+                    // 목록 새로고침
+                    loadVectorStoreList();
+                } else {
+                    alert('❌ 벡터스토어 삭제에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('벡터스토어 삭제 오류:', error);
+                alert('❌ 네트워크 오류: ' + error.message);
+            }
+        };
 
         // 페이지 로드 시 목록 불러오기
         loadVectorStoreList();

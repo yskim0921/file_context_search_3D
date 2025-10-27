@@ -17,6 +17,7 @@ import os  # 추가: 디렉토리 생성용
 import re  # 추가: 파일명 안전 처리용
 import sys  # 추가: 커맨드라인 인자 처리
 from datetime import datetime  # 추가: 날짜시간 처리용
+import json  # 추가: JSON 처리용
 
 # ================================================================
 # 1. 상태 정의 (AgentState)
@@ -101,19 +102,36 @@ def extract_ai_answer(result_text):
         print(f"⚠️ AI 답변 추출 실패: {e}")
         return result_text
 
-def save_search_history(query, search_result, html_file_path, bar_chart_path):
+def save_search_history(query, search_result, html_file_path, bar_chart_path, search_results_list=None, chroma_path=None):
     """검색 기록을 DB에 저장"""
     try:
         # AI 답변만 추출
         ai_answer = extract_ai_answer(search_result)
         
+        # 검색 결과 순위 리스트를 JSON으로 변환
+        ranking_json = None
+        if search_results_list:
+            # 필요한 정보만 추출하여 JSON 생성
+            ranking_data = []
+            for idx, result in enumerate(search_results_list, 1):
+                ranking_data.append({
+                    "rank": idx,
+                    "file_name": result.get("file_name", ""),
+                    "file_location": result.get("file_location", ""),
+                    "relevance": result.get("relevance", 0),
+                    "keywords": result.get("keywords", ""),
+                    "summary": result.get("summary", ""),
+                    "content": result.get("content", "")  # 전체 내용
+                })
+            ranking_json = json.dumps(ranking_data, ensure_ascii=False)
+        
         conn = pymysql.connect(**DB_CONFIG)
         with conn.cursor() as cursor:
             sql = """
-            INSERT INTO search_history (query, search_result, ai_answer, html_file_path, bar_chart_path)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO search_history (query, search_result, ai_answer, ranking_result, html_file_path, bar_chart_path, chroma_path)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(sql, (query, search_result, ai_answer, html_file_path, bar_chart_path))
+            cursor.execute(sql, (query, search_result, ai_answer, ranking_json, html_file_path, bar_chart_path, chroma_path))
         conn.commit()
         print(f"✅ 검색 기록 저장 완료!")
         conn.close()
@@ -126,7 +144,7 @@ CHROMA_PATH = get_latest_chroma_path()
 # ChromaDB 경로를 찾지 못한 경우 기본값 사용 (또는 오류 처리)
 if not CHROMA_PATH:
     print("❌ ChromaDB 경로를 찾을 수 없습니다. 기본값을 사용합니다.")
-    CHROMA_PATH = "./rag_chroma/documents/title_summary_test/"
+    CHROMA_PATH = "./python/vector_store/rag_chroma/documents/20251024_174234/"
 
 EMBEDDINGS = OllamaEmbeddings(model="exaone3.5:2.4b")
 LLM = Ollama(model="exaone3.5:2.4b")
@@ -442,7 +460,7 @@ def rag_search_agent(state: AgentState):
                     "relevance": round(relevance, 1),
                     "file_name": row["file_name"],
                     "file_location": row["file_location"],
-                    "summary": row["summary"][:100] + "..." if row["summary"] else "요약 없음",
+                    "summary": row["summary"] + "..." if row["summary"] else "요약 없음",
                     "doc_type": row["doc_type"],
                     "keywords": row["keywords"],
                     "content": content
@@ -589,5 +607,8 @@ if __name__ == "__main__":
     print(f"\n[HTML_FILE_PATH]{relative_path}[/HTML_FILE_PATH]")
     print(f"[BAR_CHART_PATH]{bar_chart_path}[/BAR_CHART_PATH]")
     
-    # 5) 검색 기록을 DB에 저장
-    save_search_history(query, result["result"], relative_path, bar_chart_path)
+    # ChromaDB 경로에서 마지막 폴더명만 추출 (예: 20251027_144152)
+    chroma_folder_name = os.path.basename(os.path.normpath(CHROMA_PATH))
+    
+    # 5) 검색 기록을 DB에 저장 (순위 리스트 및 ChromaDB 경로 포함)
+    save_search_history(query, result["result"], relative_path, bar_chart_path, result.get("search_results"), chroma_folder_name)

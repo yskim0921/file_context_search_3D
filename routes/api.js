@@ -33,6 +33,50 @@ router.get('/files', (req, res) => {
   }
 });
 
+// 파일 삭제 API
+router.delete('/delete-file/:filename', async (req, res) => {
+  const filename = decodeURIComponent(req.params.filename);
+  
+  try {
+    const uploadDir = path.join(__dirname, '..', 'public', 'upload', 'files');
+    const filePath = path.join(uploadDir, filename);
+    
+    // 파일이 존재하는지 확인
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ 
+        success: false,
+        message: '파일을 찾을 수 없습니다.' 
+      });
+    }
+    
+    // DB에서 documents 테이블에서도 삭제
+    try {
+      const sql = 'DELETE FROM documents WHERE file_name = ?';
+      await query(sql, [filename]);
+      console.log(`✅ DB에서 파일 삭제 완료: ${filename}`);
+    } catch (dbError) {
+      console.error('DB 삭제 오류 (파일 삭제는 계속 진행):', dbError);
+      // DB 오류가 있어도 파일 삭제는 계속 진행
+    }
+    
+    // 파일 삭제
+    fs.unlinkSync(filePath);
+    console.log(`✅ 파일 삭제 완료: ${filename}`);
+    
+    res.json({ 
+      success: true,
+      message: `파일 ${filename}이 삭제되었습니다.` 
+    });
+  } catch (error) {
+    console.error('파일 삭제 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '파일 삭제에 실패했습니다.',
+      error: error.message 
+    });
+  }
+});
+
 // Python 스크립트 실행 API (conda 환경 사용)
 router.post('/run-python', express.json(), (req, res) => {
   const { filePath } = req.body;
@@ -167,12 +211,13 @@ router.post('/create-vectorstore', express.json(), (req, res) => {
 // 벡터스토어 목록 가져오기 API
 router.get('/vectorstore-list', async (req, res) => {
   try {
-    // MySQL에서 벡터스토어 목록 가져오기
-    const sql = 'SELECT folder, count, created_at FROM vectorStore ORDER BY created_at DESC';
+    // MySQL에서 벡터스토어 목록 가져오기 (id 포함)
+    const sql = 'SELECT id, folder, count, created_at FROM vectorStore ORDER BY created_at DESC';
     const results = await query(sql);
     
     // 날짜 포맷 변환
     const folderList = results.map(row => ({
+      id: row.id,
       name: row.folder,
       date: new Date(row.created_at).toLocaleString('ko-KR'),
       fileCount: row.count
@@ -184,6 +229,56 @@ router.get('/vectorstore-list', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: '벡터스토어 목록을 가져오는데 실패했습니다.' 
+    });
+  }
+});
+
+// 벡터스토어 삭제 API
+router.delete('/delete-vectorstore/:id', async (req, res) => {
+  const id = req.params.id;
+  
+  try {
+    // 먼저 해당 벡터스토어의 folder 정보 가져오기
+    const selectSql = 'SELECT folder FROM vectorStore WHERE id = ?';
+    const selectResults = await query(selectSql, [id]);
+    
+    if (selectResults.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: '벡터스토어를 찾을 수 없습니다.' 
+      });
+    }
+    
+    const folderName = selectResults[0].folder;
+    
+    // 실제 ChromaDB 폴더 삭제
+    const chromaPath = path.join(__dirname, '..', 'python', 'vector_store', 'rag_chroma', 'documents', folderName);
+    
+    if (fs.existsSync(chromaPath)) {
+      console.log(`🗑️ ChromaDB 폴더 삭제 시도: ${chromaPath}`);
+      // 폴더와 모든 하위 파일 삭제
+      fs.rmSync(chromaPath, { recursive: true, force: true });
+      console.log(`✅ ChromaDB 폴더 삭제 완료: ${chromaPath}`);
+    } else {
+      console.log(`⚠️ ChromaDB 폴더가 존재하지 않음: ${chromaPath}`);
+    }
+    
+    // DB에서 벡터스토어 삭제
+    const deleteSql = 'DELETE FROM vectorStore WHERE id = ?';
+    await query(deleteSql, [id]);
+    
+    console.log(`✅ 벡터스토어 삭제 완료: ID ${id}, Folder: ${folderName}`);
+    
+    res.json({ 
+      success: true,
+      message: `벡터스토어 ${folderName}가 삭제되었습니다.` 
+    });
+  } catch (error) {
+    console.error('벡터스토어 삭제 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '벡터스토어 삭제에 실패했습니다.',
+      error: error.message 
     });
   }
 });
@@ -254,19 +349,50 @@ router.post('/ai-search', express.json(), (req, res) => {
 router.get('/search-history', async (req, res) => {
   try {
     // MySQL에서 검색 기록 목록 가져오기 (최신순)
-    const sql = 'SELECT id, query, search_result, ai_answer, html_file_path, bar_chart_path, created_at FROM search_history ORDER BY created_at DESC LIMIT 50';
+    const sql = 'SELECT id, query, search_result, ai_answer, ranking_result, html_file_path, bar_chart_path, chroma_path, created_at FROM search_history ORDER BY created_at DESC LIMIT 50';
     const results = await query(sql);
     
     // 날짜 포맷 변환
-    const historyList = results.map(row => ({
-      id: row.id,
-      query: row.query,
-      searchResult: row.search_result,
-      aiAnswer: row.ai_answer,
-      htmlFilePath: row.html_file_path,
-      barChartPath: row.bar_chart_path,
-      createdAt: new Date(row.created_at).toLocaleString('ko-KR')
-    }));
+    const historyList = results.map(row => {
+      let rankingResult = null;
+      try {
+        // JSON 문자열을 파싱
+        if (row.ranking_result) {
+          console.log('=== API DEBUG ===');
+          console.log('Row ID:', row.id);
+          console.log('ranking_result (raw):', row.ranking_result);
+          console.log('ranking_result type:', typeof row.ranking_result);
+          
+          // 이미 객체인 경우와 문자열인 경우 처리
+          if (typeof row.ranking_result === 'string') {
+            rankingResult = JSON.parse(row.ranking_result);
+          } else {
+            // 이미 파싱된 객체인 경우
+            rankingResult = row.ranking_result;
+          }
+          
+          console.log('ranking_result (parsed):', rankingResult);
+          console.log('is array?', Array.isArray(rankingResult));
+          console.log('length:', rankingResult ? rankingResult.length : 'null');
+        }
+      } catch (e) {
+        console.error('순위 리스트 파싱 오류:', e);
+        console.error('Raw data:', row.ranking_result);
+        rankingResult = null;
+      }
+      
+      return {
+        id: row.id,
+        query: row.query,
+        searchResult: row.search_result,
+        aiAnswer: row.ai_answer,
+        rankingResult: rankingResult,
+        htmlFilePath: row.html_file_path,
+        barChartPath: row.bar_chart_path,
+        chromaPath: row.chroma_path,
+        createdAt: new Date(row.created_at).toLocaleString('ko-KR')
+      };
+    });
     
     res.json({ success: true, history: historyList });
   } catch (error) {

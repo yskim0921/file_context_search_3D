@@ -31,9 +31,9 @@
         <div class="content-card">
             <h2>AI로 문서내용 파일 찾기</h2>
             <div style="margin-bottom: 20px;">
-                <textarea id="aiSearchInput" placeholder="어떤 내용의 문서를 찾고 있나요? 예: '프로젝트 관리 방법에 대한 문서', '보안 정책 관련 문서' 등..." style="width: 100%; min-height: 100px; padding: 12px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                <textarea id="aiSearchInput" placeholder="어떤 내용의 문서를 찾고 있나요? 예: '프로젝트 관리 방법에 대한 문서', '보안 정책 관련 문서' 등..." style="width: 100%; min-height: 120px; padding: 16px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
             </div>
-            <button id="aiSearchBtn" class="upload-btn" style="padding: 12px 30px; font-size: 14px; font-weight: 600; cursor: pointer;">
+            <button id="aiSearchBtn" class="upload-btn" style="padding: 14px 32px; font-size: 17px; font-weight: 600; cursor: pointer;">
                 🔍 AI 검색 실행
             </button>
             <div id="aiSearchResults" style="margin-top: 20px;"></div>
@@ -49,8 +49,8 @@
         <div class="content-card">
             <h2>파일명으로 검색</h2>
             <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <input type="text" id="searchInput" placeholder="파일명을 입력하세요..." style="flex: 1; padding: 10px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-                <button id="searchBtn" class="upload-btn" style="padding: 10px 20px; margin: 0;">검색</button>
+                <input type="text" id="searchInput" placeholder="파일명을 입력하세요..." style="flex: 1; padding: 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;">
+                <button id="searchBtn" class="upload-btn" style="padding: 12px 24px; margin: 0; font-size: 16px; font-weight: 600;">검색</button>
             </div>
             <div id="searchResults" class="file-list"></div>
         </div>
@@ -229,18 +229,49 @@
                 const data = await response.json();
                 
                 if (data.success && data.history.length > 0) {
-                    searchHistory.innerHTML = data.history.map(item => `
+                    searchHistory.innerHTML = data.history.map(item => {
+                        // 순위 정보 생성
+                        let rankingInfo = '';
+                        if (item.rankingResult && Array.isArray(item.rankingResult) && item.rankingResult.length > 0) {
+                            const top3 = item.rankingResult.slice(0, 3);
+                            const medals = ['🥇', '🥈', '🥉'];
+                            rankingInfo = top3.map((rank, idx) => {
+                                const medal = medals[idx] || '🏅';
+                                return `${medal} ${(rank.file_name || '').replace(/'/g, '')} (${rank.relevance || 0}%)`;
+                            }).join(', ');
+                        }
+                        
+                        // 안전한 문자열 처리를 위한 함수
+                        const escapeHtml = (str) => {
+                            if (!str) return '';
+                            return String(str)
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#039;');
+                        };
+                        
+                        const safeQuery = escapeHtml(item.query);
+                        const safeHtmlPath = escapeHtml(item.htmlFilePath || '');
+                        const safeBarPath = escapeHtml(item.barChartPath || '');
+                        
+                        return `
                         <div class="file-item" style="margin-bottom: 10px;">
-                            <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer;" onclick="viewSearchHistory(${item.id}, '${item.htmlFilePath}', '${item.barChartPath}', '${item.query.replace(/'/g, "\\'")}')">
-                                <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 5px;">
+                            <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer;" onclick="viewSearchHistory(${item.id}, '${safeHtmlPath}', '${safeBarPath}', '${safeQuery.replace(/'/g, "\\'")}')">
+                                <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;">
                                     🔍 ${item.query}
                                 </div>
-                                <div style="font-size: 12px; color: var(--text-muted);">
+                                ${rankingInfo ? `<div style="font-size: 14px; color: var(--secondary-color); margin-bottom: 6px; line-height: 1.5; word-break: break-all;">
+                                    ${rankingInfo}
+                                </div>` : ''}
+                                <div style="font-size: 14px; color: var(--text-muted);">
                                     📅 ${item.createdAt}
                                 </div>
                             </div>
                         </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     searchHistory.innerHTML = '<p style="text-align: center; color: var(--text-muted);">검색 기록이 없습니다.</p>';
                 }
@@ -255,14 +286,35 @@
             // 검색 결과 및 AI 답변 가져오기
             let searchResult = '';
             let aiAnswer = '';
+            let rankingResult = null;
+            let chromaPath = '';
             try {
                 const response = await fetch('/api/search-history');
                 const data = await response.json();
                 if (data.success) {
                     const item = data.history.find(h => h.id === id);
                     if (item) {
+                        console.log('Search history item:', item);
+                        console.log('rankingResult:', item.rankingResult);
+                        console.log('rankingResult type:', typeof item.rankingResult);
+                        console.log('rankingResult is array?', Array.isArray(item.rankingResult));
                         searchResult = item.searchResult || '';
                         aiAnswer = item.aiAnswer || '';
+                        
+                        // rankingResult 파싱 (문자열이면 JSON 파싱)
+                        if (typeof item.rankingResult === 'string') {
+                            try {
+                                rankingResult = JSON.parse(item.rankingResult);
+                                console.log('rankingResult parsed from string');
+                            } catch (e) {
+                                console.error('Failed to parse rankingResult:', e);
+                                rankingResult = null;
+                            }
+                        } else {
+                            rankingResult = item.rankingResult || null;
+                        }
+                        
+                        chromaPath = item.chromaPath || '';
                     }
                 }
             } catch (error) {
@@ -270,51 +322,183 @@
             }
             
             let resultHTML = `
-                <div style="padding: 20px; background: var(--bg-primary); border-radius: 8px; margin-top: 15px;">
-                    <h3 style="margin-bottom: 15px; color: var(--text-primary);">🔍 검색 내용</h3>
-                    <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 20px;">
+                <div style="padding: 24px; background: var(--bg-primary); border-radius: 8px; margin-top: 15px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">🔍 검색 내용</h3>
+                    <div style="padding: 15px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 20px; font-size: 18px;">
                         ${query}
                     </div>
             `;
             
-            // AI 답변을 가장 위에 표시
+            // ChromaDB 경로 표시
+            if (chromaPath) {
+                resultHTML += `
+                    <div style="margin-top: 10px; margin-bottom: 20px;">
+                        <div style="font-size: 15px; color: var(--text-muted);">
+                            💾 사용된 벡터 DB: ${chromaPath}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ==========================================
+            // 1. AI 답변
+            // ==========================================
             if (aiAnswer) {
                 resultHTML += `
                     <div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 18px;">🤖 AI 답변</h3>
-                        <div style="padding: 20px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 8px; border-left: 4px solid var(--primary-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);">
-                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 15px; line-height: 1.6;">${aiAnswer}</pre>
+                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
+                        <div style="padding: 24px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 8px; border-left: 4px solid var(--primary-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);">
+                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 17px; line-height: 1.8;">${aiAnswer}</pre>
                         </div>
                     </div>
                 `;
+            }
+            
+            // ==========================================
+            // 2. 검색 결과 순위 (ranking_result)
+            // ==========================================
+            console.log('=== rankingResult DEBUG ===');
+            console.log('rankingResult:', rankingResult);
+            console.log('rankingResult type:', typeof rankingResult);
+            console.log('rankingResult is array?', Array.isArray(rankingResult));
+            console.log('rankingResult length:', rankingResult ? rankingResult.length : 'null');
+            
+            if (rankingResult) {
+                console.log('✅ rankingResult exists!', rankingResult);
+                console.log('Is Array?', Array.isArray(rankingResult));
+                console.log('First item keys:', rankingResult[0] ? Object.keys(rankingResult[0]) : 'no items');
+            }
+            
+            if (rankingResult && Array.isArray(rankingResult) && rankingResult.length > 0) {
+                console.log('✅ Displaying ranking results...');
+                console.log('Total items:', rankingResult.length);
+                resultHTML += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 순위</h3>
+                        <div style="background: var(--bg-secondary); border-radius: 8px; overflow: hidden;">
+                `;
+                
+                rankingResult.forEach((item, index) => {
+                    console.log(`Item ${index}:`, item);
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '💫';
+                    const keywords = item.keywords || '';
+                    const fileLocation = item.file_location || '';
+                    const content = item.content || item.summary || '';
+                    const uniqueId = `content_${id}_${index}`;
+                    const hasFullContent = content && content !== item.summary;
+                    
+                    // HTML 이스케이프 함수
+                    const escapeHtml = (str) => {
+                        if (!str) return '';
+                        return String(str)
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+                    };
+                    
+                    const safeKeywords = escapeHtml(keywords);
+                    const safeFileLocation = escapeHtml(fileLocation);
+                    const safeContent = escapeHtml(content);
+                    const safeSummary = escapeHtml(item.summary || '');
+                    const safeFileName = escapeHtml(item.file_name || '');
+                    
+                    resultHTML += `
+                        <div style="padding: 18px; border-bottom: 1px solid var(--border-color); display: flex; align-items: flex-start; gap: 15px; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 8px;" onmouseover="this.style.backgroundColor='rgba(102, 126, 234, 0.05)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <div style="font-size: 32px; flex-shrink: 0; padding-top: 4px;">${medal}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 8px; font-size: 18px;">
+                                    📄 ${safeFileName}
+                                </div>
+                                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px;">
+                                    ${safeFileLocation ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                        📁 ${safeFileLocation}
+                                    </div>` : ''}
+                                    <div style="font-size: 14px; color: white; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; font-weight: 600;">
+                                        ⭐ ${item.relevance}%
+                                    </div>
+                                    ${safeKeywords ? `<div style="font-size: 14px; color: var(--primary-color); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                        🔑 ${safeKeywords}
+                                    </div>` : ''}
+                                </div>
+                                ${safeSummary ? `<div style="font-size: 15px; color: var(--text-secondary); line-height: 1.8; white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; margin-bottom: 10px; padding: 12px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                                    <div style="font-weight: 600; margin-bottom: 6px; color: var(--primary-color); font-size: 16px;">📋 요약:</div>
+                                    <div style="color: var(--text-primary); font-size: 16px;">${safeSummary}</div>
+                                </div>` : ''}
+                                ${hasFullContent ? `
+                                    <div style="margin-top: 10px;">
+                                        <button onclick="toggleContent('${uniqueId}')" style="padding: 12px 20px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.3s; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">
+                                            <span id="btn_${uniqueId}">📄 전체 내용 보기</span>
+                                        </button>
+                                        <div id="${uniqueId}" style="display: none; margin-top: 10px; font-size: 16px; color: var(--text-secondary); line-height: 1.8; white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; background: var(--bg-primary); padding: 18px; border-radius: 6px; border-left: 4px solid var(--primary-color); max-height: 400px; overflow-y: auto;">
+                                            ${safeContent}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                resultHTML += `
+                        </div>
+                    </div>
+                `;
+            } else {
+                // rankingResult가 없거나 배열이 아닌 경우
+                console.log('❌ No ranking results to display');
+                console.log('rankingResult value:', rankingResult);
+                console.log('is null?', rankingResult === null);
+                console.log('is undefined?', rankingResult === undefined);
+                
+                if (!rankingResult) {
+                    resultHTML += `
+                        <div style="margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
+                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 순위 정보가 없습니다.</p>
+                        </div>
+                    `;
+                } else {
+                    resultHTML += `
+                        <div style="margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
+                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 순위: ${rankingResult.length}개 항목</p>
+                        </div>
+                    `;
+                }
             }
             
             // 검색 결과 내용 표시 (AI 답변이 없는 경우만)
-            if (searchResult && !aiAnswer) {
+            if (searchResult && !aiAnswer && (!rankingResult || !Array.isArray(rankingResult) || rankingResult.length === 0)) {
                 resultHTML += `
                     <div style="margin-top: 15px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">📋 검색 결과</h3>
-                        <div style="padding: 15px; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid var(--primary-color);">
-                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">${searchResult}</pre>
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary); font-size: 20px;">📋 검색 결과</h3>
+                        <div style="padding: 20px; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid var(--primary-color);">
+                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 16px; line-height: 1.8;">${searchResult}</pre>
                         </div>
                     </div>
                 `;
             }
             
+            // ==========================================
+            // 3. 검색 결과 관련성 (Bar Chart)
+            // ==========================================
             if (barChartPath) {
                 resultHTML += `
-                    <div style="margin-top: 15px;">
-                        <h4 style="font-size: 14px; margin-bottom: 10px;">📊 검색 결과 관련성</h4>
-                        <iframe src="${barChartPath}" style="width: 100%; height: 400px; border: 2px solid var(--border-color); border-radius: 6px;"></iframe>
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">📊 검색 결과 관련성</h3>
+                        <iframe src="${barChartPath}" style="width: 100%; height: 400px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
                     </div>
                 `;
             }
             
+            // ==========================================
+            // 4. 3D 공간 시각화
+            // ==========================================
             if (htmlFilePath) {
                 resultHTML += `
-                    <div style="margin-top: 15px;">
-                        <h4 style="font-size: 14px; margin-bottom: 10px;">🔍 3D 공간 시각화</h4>
-                        <iframe src="${htmlFilePath}" style="width: 100%; height: 700px; border: 2px solid var(--border-color); border-radius: 6px;"></iframe>
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">🔍 3D 공간 시각화</h3>
+                        <iframe src="${htmlFilePath}" style="width: 100%; height: 700px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
                     </div>
                 `;
             }
@@ -325,6 +509,20 @@
             
             // 결과 섹션으로 스크롤
             aiSearchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 전체 내용 토글 함수
+        function toggleContent(contentId) {
+            const contentDiv = document.getElementById(contentId);
+            const btnSpan = document.getElementById('btn_' + contentId);
+            
+            if (contentDiv.style.display === 'none') {
+                contentDiv.style.display = 'block';
+                btnSpan.innerHTML = '📄 전체 내용 숨기기';
+            } else {
+                contentDiv.style.display = 'none';
+                btnSpan.innerHTML = '📄 전체 내용 보기';
+            }
         }
 
         // 페이지 로드 시 파일 목록 및 검색 기록 표시

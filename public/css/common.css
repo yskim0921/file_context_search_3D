@@ -57,6 +57,7 @@ body {
     min-height: 100vh;
     color: var(--text-primary);
     line-height: 1.6;
+    font-size: 17px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -66,7 +67,7 @@ body {
    ============================================ */
 
 .page-wrapper {
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     padding: var(--spacing-2xl) var(--spacing-lg);
 }
@@ -106,7 +107,7 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    font-size: 2.25rem;
+    font-size: 2.75rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
@@ -146,7 +147,7 @@ body {
 
 .btn-primary {
     padding: 14px 28px;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     background: var(--primary-gradient);
     color: white;
@@ -183,7 +184,7 @@ body {
 
 .btn-secondary {
     padding: 14px 28px;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     background: var(--bg-primary);
     color: var(--primary-color);
@@ -203,8 +204,8 @@ body {
 }
 
 .btn-small {
-    padding: 6px 14px;
-    font-size: 12px;
+    padding: 8px 16px;
+    font-size: 14px;
     font-weight: 600;
     background: var(--bg-primary);
     color: var(--primary-color);
@@ -256,7 +257,7 @@ h1, h2, h3, h4, h5, h6 {
 
 h2 {
     color: var(--text-primary);
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 600;
     margin-bottom: var(--spacing-lg);
 }

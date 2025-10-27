@@ -35,7 +35,7 @@ form {
     box-sizing: border-box;
     font-weight: 500;
     color: var(--primary-color);
-    font-size: 13px;
+    font-size: 16px;
     position: relative;
     overflow: hidden;
 }
@@ -66,8 +66,8 @@ label[for="folderInput"]::before {
 }
 
 .upload-btn {
-    padding: 10px 24px;
-    font-size: 13px;
+    padding: 12px 28px;
+    font-size: 16px;
     font-weight: 600;
     background: var(--primary-gradient);
     color: white;
@@ -124,7 +124,7 @@ label[for="folderInput"]::before {
     border-left: 3px solid #28a745;
     box-shadow: none;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .message .error {
@@ -135,7 +135,7 @@ label[for="folderInput"]::before {
     border-left: 3px solid #dc3545;
     box-shadow: none;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .message .loading {
@@ -146,7 +146,7 @@ label[for="folderInput"]::before {
     border-left: 3px solid #0dcaf0;
     box-shadow: none;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 /* ============================================
@@ -254,7 +254,7 @@ label[for="folderInput"]::before {
     font-weight: 500;
     color: var(--text-primary);
     word-break: break-all;
-    font-size: 12px;
+    font-size: 14px;
     padding: 4px 8px;
     background: var(--bg-primary);
     border-radius: 4px;
@@ -266,7 +266,7 @@ label[for="folderInput"]::before {
 
 .file-size {
     color: var(--secondary-color);
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 500;
     padding: 2px 6px;
     background: linear-gradient(135deg, rgba(118, 75, 162, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
@@ -277,7 +277,7 @@ label[for="folderInput"]::before {
 
 .file-date {
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 400;
     margin-top: 2px;
 }
@@ -287,8 +287,8 @@ label[for="folderInput"]::before {
    ============================================ */
 
 a.back-link-small {
-    padding: 6px 14px;
-    font-size: 12px;
+    padding: 8px 16px;
+    font-size: 14px;
     font-weight: 600;
     background: var(--bg-primary);
     color: var(--primary-color);
@@ -452,8 +452,8 @@ a.back-link-small:hover {
 }
 
 .page-btn {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 10px 20px;
+    font-size: 15px;
     font-weight: 600;
     background: white;
     color: var(--primary-color);
@@ -494,7 +494,7 @@ a.back-link-small:hover {
 
 .page-info {
     margin-left: 12px;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-muted);
     font-weight: 500;
 }

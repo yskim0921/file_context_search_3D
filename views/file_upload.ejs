@@ -57,14 +57,16 @@
                 <table class="file-table">
                     <thead>
                         <tr>
+                            <th style="width: 80px;">순번</th>
                             <th>파일명</th>
                             <th>크기</th>
                             <th>업로드 날짜</th>
+                            <th>삭제</th>
                         </tr>
                     </thead>
                     <tbody id="fileTableBody">
                         <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -234,11 +236,17 @@
                     const currentFiles = data.files.slice(startIndex, endIndex);
                     
                     // 파일 목록 HTML 생성
-                    const fileListHtml = currentFiles.map(file => `
+                    const fileListHtml = currentFiles.map((file, index) => `
                         <tr>
+                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${data.files.length - startIndex - index}</td>
                             <td>${file.filename}</td>
                             <td>${formatFileSize(file.size)}</td>
                             <td>${formatDate(file.uploadDate)}</td>
+                            <td style="text-align: center;">
+                                <button onclick="window.deleteFile('${file.filename}')" style="padding: 8px 16px; background: #f5576c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.background='#e0485c'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='#f5576c'; this.style.transform='translateY(0)';">
+                                    🗑️ 삭제
+                                </button>
+                            </td>
                         </tr>
                     `).join('');
                     
@@ -258,7 +266,7 @@
                         });
                     });
                 } else {
-                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
+                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
                     document.getElementById('pagination').innerHTML = '';
                 }
             } catch (error) {
@@ -418,11 +426,17 @@
                     const currentFiles = data.files.slice(startIndex, endIndex);
                     
                     // 파일 목록 HTML 생성
-                    const fileListHtml = currentFiles.map(file => `
+                    const fileListHtml = currentFiles.map((file, index) => `
                         <tr>
+                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${data.files.length - startIndex - index}</td>
                             <td>${file.filename}</td>
                             <td>${formatFileSize(file.size)}</td>
                             <td>${formatDate(file.uploadDate)}</td>
+                            <td style="text-align: center;">
+                                <button onclick="window.deleteFile('${file.filename}')" style="padding: 8px 16px; background: #f5576c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.background='#e0485c'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='#f5576c'; this.style.transform='translateY(0)';">
+                                    🗑️ 삭제
+                                </button>
+                            </td>
                         </tr>
                     `).join('');
                     
@@ -437,6 +451,32 @@
                 }
             } catch (error) {
                 console.error('파일 목록 로드 실패:', error);
+            }
+        };
+        
+        // 파일 삭제 함수
+        window.deleteFile = async function(filename) {
+            const confirmed = confirm(`정말로 "${filename}" 파일을 삭제하시겠습니까?`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete-file/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ 파일이 삭제되었습니다.');
+                    loadFileList();
+                } else {
+                    alert('❌ 파일 삭제에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('파일 삭제 오류:', error);
+                alert('❌ 네트워크 오류: ' + error.message);
             }
         };
         
