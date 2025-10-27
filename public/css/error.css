@@ -1,0 +1,81 @@
+/* ============================================
+   에러 페이지 - 프리미엄 스타일
+   ============================================ */
+
+.error-container {
+    text-align: center;
+    background: var(--bg-primary);
+    padding: 60px 40px;
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.error-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--primary-gradient);
+}
+
+.error-container:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-2xl);
+}
+
+.error-container h1 {
+    font-size: 120px;
+    margin: 0;
+    font-weight: 800;
+    line-height: 1;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.05em;
+    filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.2));
+}
+
+.error-container h2 {
+    color: var(--text-primary);
+    margin: var(--spacing-lg) 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.error-container p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+/* ============================================
+   에러 유형별 색상
+   ============================================ */
+
+.error-404 h1 {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.error-500 h1 {
+    background: linear-gradient(135deg, #fad961 0%, #f76b1c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.error-403 h1 {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}

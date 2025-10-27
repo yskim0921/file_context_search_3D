@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파일 업로드</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/file_upload.css">
+    <link rel="stylesheet" href="/css/file_rag.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="page-header">
+            <div class="title-container">
+                <h1>파일 업로드</h1>
+                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
+            </div>
+        </div>
+        
+        <!-- 기능 선택 네비게이션 -->
+        <div class="content-card">
+            <h2>기능 선택</h2>
+            <div class="button-container">
+                <a href="/file_upload" class="upload-link">파일업로드</a>
+                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
+                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
+                <a href="/file_search" class="search-link">문서내용 검색파일</a>
+            </div>
+        </div>
+        
+        <div class="content-card">
+            <h2>파일을 선택하여 업로드하세요</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx" required>
+                    <label for="fileInput" class="file-label">파일 선택</label>
+                </div>
+                <button type="submit" class="upload-btn">업로드</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+        
+        <!-- 파일 검색 섹션 -->
+        <div class="content-card">
+            <h2>파일 찾기</h2>
+            <div class="search-container">
+                <input type="text" id="fileSearchInput" placeholder="파일명을 입력하세요..." class="search-input">
+                <button type="button" id="fileSearchBtn" class="search-btn">찾기</button>
+                <button type="button" id="fileSearchReset" class="search-reset-btn">전체 보기</button>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+        </div>
+        
+        <div class="content-card">
+            <h2>업로드된 파일 목록</h2>
+            <div id="fileList" class="file-list">
+                <table class="file-table">
+                    <thead>
+                        <tr>
+                            <th>파일명</th>
+                            <th>크기</th>
+                            <th>업로드 날짜</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fileTableBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="pagination"></div>
+        </div>
+    </div>
+
+    <!-- 업로드 진행 팝업 -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">처리 중</h3>
+            </div>
+            <div class="modal-body">
+                <div id="modalMessage" class="modal-message"></div>
+                <div class="modal-spinner">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer" id="modalFooter" style="display: none;">
+                <button onclick="closeModal()" class="modal-btn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const message = document.getElementById('message');
+        const fileLabel = document.querySelector('.file-label');
+        const uploadModal = document.getElementById('uploadModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalFooter = document.getElementById('modalFooter');
+        
+        // 페이징 관련 변수
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        
+        // 파일 검색 관련 변수
+        const fileSearchInput = document.getElementById('fileSearchInput');
+        const fileSearchBtn = document.getElementById('fileSearchBtn');
+        const fileSearchReset = document.getElementById('fileSearchReset');
+        const searchResults = document.getElementById('searchResults');
+        let allFiles = [];
+
+        // 모달 팝업 제어 함수
+        function showModal(title, messageText, showSpinner = true, showFooter = false) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = messageText;
+            if (showSpinner) {
+                document.querySelector('.modal-spinner').style.display = 'block';
+            } else {
+                document.querySelector('.modal-spinner').style.display = 'none';
+            }
+            modalFooter.style.display = showFooter ? 'block' : 'none';
+            uploadModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            uploadModal.style.display = 'none';
+        }
+
+        // 모달 외부 클릭 시 닫기
+        uploadModal.addEventListener('click', (e) => {
+            if (e.target === uploadModal) {
+                closeModal();
+            }
+        });
+
+        // 파일 선택 시 파일명 표시
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileLabel.textContent = e.target.files[0].name;
+            }
+        });
+
+        // 폼 제출 처리
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showMessage('파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            // 모달 표시 (처음)
+            showModal('파일 업로드', '📤 파일 업로드 중입니다...', true, false);
+            
+            try {
+                const response = await fetch('/file_upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 업로드 완료 - 모달 업데이트
+                    showModal('업로드 완료', `✅ 파일 업로드가 완료되었습니다!\n파일명: ${data.file.originalName}`, false, false);
+                    
+                    // 파일 목록 새로고침
+                    loadFileList();
+                    
+                    // 2초 후 자동으로 Python 스크립트 실행
+                    setTimeout(async () => {
+                        // 파일내용 정리하여 MySQL DB에 입력 중 - 모달 업데이트
+                        showModal('파일 처리', '📝 파일내용 정리하여 MySQL DB에 입력중입니다...', true, false);
+                        
+                        try {
+                            const pythonResponse = await fetch('/api/run-python', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ filePath: data.file.path })
+                            });
+                            
+                            const pythonData = await pythonResponse.json();
+                            
+                            if (pythonData.success) {
+                                // 처리 완료 - 모달 업데이트
+                                showModal('처리 완료', `✅ 파일이 MySQL DB에 성공적으로 저장되었습니다!\n파일명: ${data.file.originalName}`, false, true);
+                                message.innerHTML = `<div class="success">파일 업로드 및 처리가 완료되었습니다.</div>`;
+                                // 파일 목록 새로고침
+                                loadFileList();
+                            } else {
+                                showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true);
+                                message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                            }
+                        } catch (error) {
+                            showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${error.message}`, false, true);
+                            message.innerHTML = `<div class="error">MySQL DB 저장 중 오류가 발생했습니다.</div>`;
+                        }
+                        
+                        form.reset();
+                        fileLabel.textContent = '파일 선택';
+                        loadFileList(); // 파일 목록 새로고침
+                    }, 2000);
+                } else {
+                    showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true);
+                    message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                }
+            } catch (error) {
+                showModal('서버 오류', '❌ 서버 오류가 발생했습니다.', false, true);
+                message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+            }
+        });
+
+        // 파일 목록 불러오기 (페이징 적용)
+        async function loadFileList() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                
+                if (data.success && data.files.length > 0) {
+                    // 전체 페이지 수 계산
+                    const totalPages = Math.ceil(data.files.length / itemsPerPage);
+                    
+                    // 현재 페이지에 해당하는 파일만 추출
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const currentFiles = data.files.slice(startIndex, endIndex);
+                    
+                    // 파일 목록 HTML 생성
+                    const fileListHtml = currentFiles.map(file => `
+                        <tr>
+                            <td>${file.filename}</td>
+                            <td>${formatFileSize(file.size)}</td>
+                            <td>${formatDate(file.uploadDate)}</td>
+                        </tr>
+                    `).join('');
+                    
+                    // 페이징 버튼 HTML 생성
+                    const paginationHtml = createPaginationHtml(currentPage, totalPages, data.files.length);
+                    
+                    document.getElementById('fileTableBody').innerHTML = fileListHtml;
+                    document.getElementById('pagination').innerHTML = paginationHtml;
+                    
+                    // 클릭 이벤트 추가
+                    document.getElementById('fileTableBody').querySelectorAll('tr').forEach(row => {
+                        row.addEventListener('click', function() {
+                            // 이전 선택 제거
+                            document.getElementById('fileTableBody').querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                            // 현재 행 선택
+                            this.classList.add('selected');
+                        });
+                    });
+                } else {
+                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
+                    document.getElementById('pagination').innerHTML = '';
+                }
+            } catch (error) {
+                console.error('파일 목록 로드 실패:', error);
+            }
+        }
+        
+        // 페이징 버튼 HTML 생성
+        function createPaginationHtml(currentPage, totalPages, totalItems) {
+            if (totalPages <= 1) return '';
+            
+            let html = '<div class="pagination">';
+            
+            // 이전 버튼
+            if (currentPage > 1) {
+                html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})">이전</button>`;
+            } else {
+                html += `<button class="page-btn disabled" disabled>이전</button>`;
+            }
+            
+            // 페이지 번호
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (startPage > 1) {
+                html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="page-ellipsis">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<button class="page-btn active">${i}</button>`;
+                } else {
+                    html += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
+                }
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="page-ellipsis">...</span>`;
+                }
+                html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // 다음 버튼
+            if (currentPage < totalPages) {
+                html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})">다음</button>`;
+            } else {
+                html += `<button class="page-btn disabled" disabled>다음</button>`;
+            }
+            
+            html += `<span class="page-info">(총 ${totalItems}개)</span>`;
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // 페이지 이동 함수
+        function goToPage(page) {
+            currentPage = page;
+            loadFileList();
+            // 스크롤을 파일 목록 상단으로 이동
+            document.querySelector('.content-card:last-child').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showMessage(text, type) {
+            message.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                message.innerHTML = '';
+            }, 5000);
+        }
+        
+        // 파일 크기 포맷
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // 날짜 포맷
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 파일 검색 기능
+        function performFileSearch() {
+            const searchTerm = fileSearchInput.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                searchResults.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">검색어를 입력해주세요.</p>';
+                return;
+            }
+            
+            const filteredFiles = allFiles.filter(file => 
+                file.filename.toLowerCase().includes(searchTerm)
+            );
+            
+            if (filteredFiles.length > 0) {
+                searchResults.innerHTML = filteredFiles.map(file => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <span class="file-name">${file.filename}</span>
+                            <span class="file-size">${formatFileSize(file.size)}</span>
+                            <span class="file-date">${formatDate(file.uploadDate)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                searchResults.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">검색 결과가 없습니다.</p>';
+            }
+        }
+        
+        // 파일 검색 버튼 이벤트
+        fileSearchBtn.addEventListener('click', performFileSearch);
+        
+        // Enter 키로 검색
+        fileSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performFileSearch();
+            }
+        });
+        
+        // 전체 보기 버튼
+        fileSearchReset.addEventListener('click', function() {
+            fileSearchInput.value = '';
+            searchResults.innerHTML = '';
+        });
+        
+        // 파일 목록 불러오기 함수 수정 (전체 파일 저장)
+        const originalLoadFileList = loadFileList;
+        loadFileList = async function() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                
+                if (data.success && data.files.length > 0) {
+                    // 전체 파일 저장
+                    allFiles = data.files;
+                    
+                    // 전체 페이지 수 계산
+                    const totalPages = Math.ceil(data.files.length / itemsPerPage);
+                    
+                    // 현재 페이지에 해당하는 파일만 추출
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const currentFiles = data.files.slice(startIndex, endIndex);
+                    
+                    // 파일 목록 HTML 생성
+                    const fileListHtml = currentFiles.map(file => `
+                        <tr>
+                            <td>${file.filename}</td>
+                            <td>${formatFileSize(file.size)}</td>
+                            <td>${formatDate(file.uploadDate)}</td>
+                        </tr>
+                    `).join('');
+                    
+                    // 페이징 버튼 HTML 생성
+                    const paginationHtml = createPaginationHtml(currentPage, totalPages, data.files.length);
+                    
+                    document.getElementById('fileTableBody').innerHTML = fileListHtml;
+                    document.getElementById('pagination').innerHTML = paginationHtml;
+                } else {
+                    document.getElementById('fileList').innerHTML = '<p>업로드된 파일이 없습니다.</p>';
+                    allFiles = [];
+                }
+            } catch (error) {
+                console.error('파일 목록 로드 실패:', error);
+            }
+        };
+        
+        // 페이지 로드 시 파일 목록 불러오기
+        loadFileList();
+    </script>
+</body>
+</html>
+

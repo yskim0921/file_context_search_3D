@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>벡터스토어 만들기</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/file_upload.css">
+    <link rel="stylesheet" href="/css/file_rag.css">
+    <link rel="stylesheet" href="/css/vectorstore.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="page-header">
+            <div class="title-container">
+                <h1>벡터스토어 만들기</h1>
+                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
+            </div>
+        </div>
+        
+        <!-- 기능 선택 네비게이션 -->
+        <div class="content-card">
+            <h2>기능 선택</h2>
+            <div class="button-container">
+                <a href="/file_upload" class="upload-link">파일업로드</a>
+                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
+                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
+                <a href="/file_search" class="search-link">문서내용 검색파일</a>
+            </div>
+        </div>
+        
+        <div class="content-card">
+            <h2>DB에 저장된 내용 벡토스토어 생성</h2>
+            <button id="createVectorStoreBtn" class="upload-btn" style="margin-top: 20px;">벡터 스토어 생성</button>
+            <div id="resultMessage" style="margin-top: 20px;"></div>
+        </div>
+
+        <div class="content-card">
+            <h2>생성된 벡터스토어 목록</h2>
+            <div id="vectorstoreList" class="vectorstore-list">
+                <table class="vectorstore-table">
+                    <thead>
+                        <tr>
+                            <th>폴더명</th>
+                            <th>문서수량</th>
+                            <th>생성날짜</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vectorstoreTableBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 진행 모달 -->
+    <div id="progressModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>벡터스토어 생성 중...</h3>
+            <div id="progressStatus" style="margin: 20px 0;">
+                <p id="statusText">초기화 중...</p>
+            </div>
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <div id="finalResult" style="margin-top: 20px; display: none;">
+                <p id="resultText" style="font-size: 18px; font-weight: bold;"></p>
+            </div>
+            <button id="closeModalBtn" class="upload-btn" style="margin-top: 20px; display: none;">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        const createVectorStoreBtn = document.getElementById('createVectorStoreBtn');
+        const progressModal = document.getElementById('progressModal');
+        const statusText = document.getElementById('statusText');
+        const progressBar = document.getElementById('progressBar');
+        const finalResult = document.getElementById('finalResult');
+        const resultText = document.getElementById('resultText');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const resultMessage = document.getElementById('resultMessage');
+        const vectorstoreTableBody = document.getElementById('vectorstoreTableBody');
+
+        // 벡터스토어 목록 불러오기
+        async function loadVectorStoreList() {
+            try {
+                const response = await fetch('/api/vectorstore-list');
+                const data = await response.json();
+                
+                if (data.success && data.folders.length > 0) {
+                    const rowsHTML = data.folders.map((folder, index) => `
+                        <tr data-index="${index}">
+                            <td>${folder.name}</td>
+                            <td>${folder.fileCount}개</td>
+                            <td>${folder.date}</td>
+                        </tr>
+                    `).join('');
+                    vectorstoreTableBody.innerHTML = rowsHTML;
+                    
+                    // 클릭 이벤트 추가
+                    vectorstoreTableBody.querySelectorAll('tr').forEach(row => {
+                        row.addEventListener('click', function() {
+                            // 이전 선택 제거
+                            vectorstoreTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                            // 현재 행 선택
+                            this.classList.add('selected');
+                        });
+                    });
+                } else {
+                    vectorstoreTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">생성된 벡터스토어가 없습니다.</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading vectorstore list:', error);
+                vectorstoreTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: red;">목록을 불러오는데 실패했습니다.</td></tr>';
+            }
+        }
+
+        // 페이지 로드 시 목록 불러오기
+        loadVectorStoreList();
+
+        // 진행바 업데이트 함수
+        function updateProgress(percent, text) {
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+            statusText.textContent = text;
+        }
+
+        // Python 출력 파싱하여 진행률 업데이트
+        function parseProgress(output) {
+            const lines = output.split('\n');
+            
+            for (let line of lines) {
+                if (line.includes('MySQL 연결 성공')) {
+                    updateProgress(10, 'MySQL 연결 성공');
+                } else if (line.includes('문서 로드 완료')) {
+                    // 문서 개수 추출
+                    const match = line.match(/(\d+)개 문서/);
+                    if (match) {
+                        updateProgress(25, `${match[1]}개 문서 로드 완료`);
+                    }
+                } else if (line.includes('청킹 완료')) {
+                    updateProgress(40, '문서 청킹 완료');
+                } else if (line.includes('임베딩 모델 설정 완료')) {
+                    updateProgress(60, '임베딩 모델 설정 완료');
+                } else if (line.includes('벡터스토어 생성 중')) {
+                    updateProgress(80, '벡터스토어 생성 중...');
+                } else if (line.includes('벡터스토어 구축 완료')) {
+                    updateProgress(100, '완료!');
+                }
+            }
+        }
+
+        // 문서 개수 추출
+        function extractDocumentCount(output) {
+            const match = output.match(/MySQL에서 (\d+)개 문서 로드 완료/);
+            return match ? match[1] : null;
+        }
+
+        // 벡터스토어 생성 버튼 클릭 이벤트
+        createVectorStoreBtn.addEventListener('click', async () => {
+            // 확인 다이얼로그
+            const confirmed = confirm('벡터스토어를 생성하시겠습니까?');
+            if (!confirmed) {
+                return;
+            }
+
+            // 모달 열기
+            progressModal.style.display = 'block';
+            statusText.textContent = '벡터스토어 생성을 시작합니다...';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            finalResult.style.display = 'none';
+            closeModalBtn.style.display = 'none';
+            createVectorStoreBtn.disabled = true;
+
+            try {
+                // API 호출
+                const response = await fetch('/api/create-vectorstore', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 진행바 업데이트
+                    parseProgress(data.output || '');
+                    
+                    // 완료 메시지
+                    setTimeout(() => {
+                        const docCount = extractDocumentCount(data.output || '');
+                        if (docCount) {
+                            finalResult.style.display = 'block';
+                            resultText.textContent = `✅ 벡터스토어 생성 완료! (${docCount}개 문서)`;
+                            resultText.style.color = 'green';
+                        } else {
+                            finalResult.style.display = 'block';
+                            resultText.textContent = '✅ 벡터스토어 생성 완료!';
+                            resultText.style.color = 'green';
+                        }
+                        closeModalBtn.style.display = 'block';
+                        // 목록 새로고침
+                        loadVectorStoreList();
+                    }, 500);
+                } else {
+                    updateProgress(0, '오류 발생');
+                    finalResult.style.display = 'block';
+                    resultText.textContent = '❌ 벡터스토어 생성 실패';
+                    resultText.style.color = 'red';
+                    closeModalBtn.style.display = 'block';
+                }
+            } catch (error) {
+                updateProgress(0, '네트워크 오류');
+                finalResult.style.display = 'block';
+                resultText.textContent = '❌ 네트워크 오류: ' + error.message;
+                resultText.style.color = 'red';
+                closeModalBtn.style.display = 'block';
+            } finally {
+                createVectorStoreBtn.disabled = false;
+            }
+        });
+
+        // 모달 닫기 버튼
+        closeModalBtn.addEventListener('click', () => {
+            progressModal.style.display = 'none';
+        });
+
+        // 모달 외부 클릭 시 닫기
+        window.addEventListener('click', (event) => {
+            if (event.target === progressModal) {
+                progressModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+

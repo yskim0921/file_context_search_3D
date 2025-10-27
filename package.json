@@ -1,0 +1,29 @@
+{
+  "name": "meeting-app",
+  "version": "1.0.0",
+  "description": "회의록 관리 웹 애플리케이션",
+  "main": "app.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.15.3",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
