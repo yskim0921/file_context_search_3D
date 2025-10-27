@@ -272,18 +272,18 @@
             let resultHTML = `
                 <div style="padding: 20px; background: var(--bg-primary); border-radius: 8px; margin-top: 15px;">
                     <h3 style="margin-bottom: 15px; color: var(--text-primary);">🔍 검색 내용</h3>
-                    <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 15px;">
+                    <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 20px;">
                         ${query}
                     </div>
             `;
             
-            // AI 답변 표시
+            // AI 답변을 가장 위에 표시
             if (aiAnswer) {
                 resultHTML += `
-                    <div style="margin-top: 15px;">
-                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 16px;">🤖 AI 답변</h3>
-                        <div style="padding: 15px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 6px; border-left: 4px solid var(--primary-color);">
-                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 14px;">${aiAnswer}</pre>
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 18px;">🤖 AI 답변</h3>
+                        <div style="padding: 20px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 8px; border-left: 4px solid var(--primary-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);">
+                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 15px; line-height: 1.6;">${aiAnswer}</pre>
                         </div>
                     </div>
                 `;

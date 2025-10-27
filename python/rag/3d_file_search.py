@@ -16,6 +16,7 @@ import pymysql  # MySQL 연결용
 import os  # 추가: 디렉토리 생성용
 import re  # 추가: 파일명 안전 처리용
 import sys  # 추가: 커맨드라인 인자 처리
+from datetime import datetime  # 추가: 날짜시간 처리용
 
 # ================================================================
 # 1. 상태 정의 (AgentState)
@@ -140,6 +141,7 @@ class RAGNotebookVisualizer:
         # 질문(쿼리) 노드의 3D 공간 위치를 중앙으로 고정
         self.query_position = (0.0, 0.0, 0.0)
         self.current_query = None  # 추가: 현재 쿼리 저장 (파일명 생성용)
+        self.timestamp = None  # 추가: 파일명에 사용할 타임스탬프
 
         self.fig3d = go.Figure()  # FigureWidget -> Figure (스크립트용)
         self._init_scene()  # 3D 장면 초기화
@@ -229,6 +231,10 @@ class RAGNotebookVisualizer:
         safe_query = safe_query.strip().replace(" ", "_")
         if len(safe_query) > 50: # 파일명이 너무 길어지지 않도록 제한
             safe_query = safe_query[:50]
+        
+        # 타임스탬프가 설정되어 있으면 사용, 없으면 현재 시간 생성
+        if self.timestamp is None:
+            self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
         # 저장 폴더 설정 (python/rag/search)
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -236,14 +242,14 @@ class RAGNotebookVisualizer:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
-        filename = os.path.join(output_dir, f"{safe_query}_3d_visualization.html")
+        filename = os.path.join(output_dir, f"{safe_query}_3d_visualization_{self.timestamp}.html")
         
         # 3D 그래프 저장 및 브라우저 열기
         print(f"\n[INFO] 3D 시각화 결과를 '{filename}' 파일로 저장하고 웹 브라우저에서 표시합니다.")
         pyo.plot(self.fig3d, filename=filename, auto_open=True)
         
         # 막대 그래프 저장 및 브라우저 열기
-        bar_filename = os.path.join(output_dir, f"{safe_query}_bar_chart.html")
+        bar_filename = os.path.join(output_dir, f"{safe_query}_bar_chart_{self.timestamp}.html")
         print(f"[INFO] 막대 그래프를 '{bar_filename}' 파일로 저장하고 웹 브라우저에서 표시합니다.")
         pyo.plot(self.bar_fig, filename=bar_filename, auto_open=True)
 
@@ -258,6 +264,10 @@ class RAGNotebookVisualizer:
         safe_query = safe_query.strip().replace(" ", "_")
         if len(safe_query) > 50:
             safe_query = safe_query[:50]
+        
+        # 타임스탬프가 설정되어 있으면 사용, 없으면 현재 시간 생성
+        if self.timestamp is None:
+            self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
         # 저장 폴더 설정 (python/rag/search)
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -265,14 +275,14 @@ class RAGNotebookVisualizer:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
-        filename = os.path.join(output_dir, f"{safe_query}_3d_visualization.html")
+        filename = os.path.join(output_dir, f"{safe_query}_3d_visualization_{self.timestamp}.html")
         
         # 3D 그래프 파일 생성 (auto_open=False)
         print(f"\n[INFO] 3D 시각화 결과를 '{filename}' 파일로 저장합니다.")
         pyo.plot(self.fig3d, filename=filename, auto_open=False)
         
         # 막대 그래프 파일 생성 (auto_open=False)
-        bar_filename = os.path.join(output_dir, f"{safe_query}_bar_chart.html")
+        bar_filename = os.path.join(output_dir, f"{safe_query}_bar_chart_{self.timestamp}.html")
         pyo.plot(self.bar_fig, filename=bar_filename, auto_open=False)
         print(f"[INFO] '{bar_filename}' 파일이 생성되었습니다.")
 
@@ -551,19 +561,25 @@ if __name__ == "__main__":
     print("="*50)
     print(result["result"])
 
-    # 3) 시각화 생성 (파일만 생성, 자동 열기 비활성화)
-    visualizer.show_visualization_no_open()
-    
-    # 4) 생성된 파일 경로 출력
+    # 3) 파일명 생성용 타임스탬프 설정
     safe_query = re.sub(r'[\\/*?:"<>|]', "", query)
     safe_query = safe_query.strip().replace(" ", "_")
     if len(safe_query) > 50:
         safe_query = safe_query[:50]
     
+    # 날짜시간 추가 (YYYYMMDD_HHMMSS 형식)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # visualizer에 타임스탬프 설정
+    visualizer.timestamp = timestamp
+
+    # 4) 시각화 생성 (파일만 생성, 자동 열기 비활성화)
+    visualizer.show_visualization_no_open()
+    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(script_dir, "search")
-    html_filename = f"{safe_query}_3d_visualization.html"
-    bar_chart_filename = f"{safe_query}_bar_chart.html"
+    html_filename = f"{safe_query}_3d_visualization_{timestamp}.html"
+    bar_chart_filename = f"{safe_query}_bar_chart_{timestamp}.html"
     
     # 생성된 HTML 파일 경로를 출력 (웹 서버 URL 형식)
     # os.path.join은 백슬래시를 사용하므로 웹 URL 형식으로 변환
