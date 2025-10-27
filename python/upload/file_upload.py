@@ -133,13 +133,23 @@ def parse_llm_output(output_text):
             "keywords": "키워드 추출 실패"
         }
 
-# DB에 INSERT 함수
+# DB에 INSERT 함수 (중복 체크 추가)
 def insert_into_db(title, summary, keywords, file_location, file_name, doc_type):
-    """DB 저장"""
+    """DB 저장, 중복 체크"""
     conn = None
     try:
         conn = pymysql.connect(**DB_CONFIG)
         with conn.cursor() as cursor:
+            # 중복 체크: 같은 파일명이 이미 존재하는지 확인
+            check_sql = "SELECT COUNT(*) FROM documents WHERE file_name = %s"
+            cursor.execute(check_sql, (file_name,))
+            count = cursor.fetchone()[0]
+            
+            if count > 0:
+                print(f"⚠️ {file_name} 이미 DB에 존재합니다. 스킵합니다.")
+                return False
+            
+            # 중복이 아니면 INSERT
             sql = """
             INSERT INTO documents
             (title, summary, keywords, file_location, file_name, doc_type, created_at)
@@ -152,9 +162,11 @@ def insert_into_db(title, summary, keywords, file_location, file_name, doc_type)
         print(f"   제목: {title[:30]}...")
         print(f"   요약: {summary[:50]}...")
         print("=============================================================")
+        return True
         
     except Exception as e:
         print(f"❌ {file_name} DB 저장 실패: {e}")
+        return False
         
     finally:
         if conn:
@@ -182,7 +194,8 @@ def process_single_file(file_path, file_name):
         
     parsed = parse_llm_output(llm_output)
     
-    insert_into_db(
+    # DB 저장 (중복 체크 포함)
+    result = insert_into_db(
         title=parsed["title"],
         summary=parsed["summary"],
         keywords=parsed["keywords"],
@@ -191,7 +204,7 @@ def process_single_file(file_path, file_name):
         doc_type=doc_type
     )
     
-    return True
+    return result
 
 # 메인 실행 (단일 파일 지정)
 if __name__ == "__main__":

@@ -32,11 +32,11 @@
             <h2>폴더를 선택해서 업로드하세요</h2>
             <form id="folderUploadForm" enctype="multipart/form-data">
                 <div class="file-input-wrapper">
-                    <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*">
+                    <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*" style="display: none;">
                     <label for="folderInput" class="file-label">📂 폴더 선택</label>
                 </div>
                 <div id="message" class="message"></div>
-                <button type="submit" class="upload-btn" style="margin-top: 16px;">폴더 업로드</button>
+                <button type="submit" id="uploadButton" class="upload-btn" style="margin-top: 16px; display: none;">📤 폴더 업로드</button>
             </form>
         </div>
         
@@ -52,7 +52,12 @@
         </div>
         
         <div class="content-card">
-            <h2>업로드된 파일 목록</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">업로드된 파일 목록</h2>
+                <button id="deleteAllBtn" onclick="deleteAllFilesOnPage()" style="padding: 10px 24px; background: #f5576c; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: none;">
+                    🗑️ 현재 페이지 전체 삭제
+                </button>
+            </div>
             <div id="fileList" class="file-list">
                 <table class="file-table">
                     <thead>
@@ -119,6 +124,7 @@
         // 페이징 관련 변수
         let currentPage = 1;
         const itemsPerPage = 10;
+        let currentFiles = [];  // 현재 페이지에 표시된 파일들
 
         // 모달 팝업 제어 함수
         function showModal(title, messageText, showSpinner = true, showFooter = false, showProgress = false) {
@@ -158,66 +164,133 @@
             }
         });
 
-        // 파일 선택 시 파일명 표시
-        folderInput.addEventListener('change', function() {
-            const files = this.files;
-            if (files.length > 0) {
+        // 파일 리스트 표시 함수 (공통)
+        function displayFileListFromFiles(files) {
+            try {
+                if (!files || files.length === 0) {
+                    console.log('❌ 표시할 파일이 없습니다.');
+                    message.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">❌ 표시할 파일이 없습니다.</div>';
+                    return;
+                }
+                
                 // 첫 번째 파일의 전체 경로 추출
                 const firstFilePath = files[0].webkitRelativePath || files[0].name;
                 
-                // 폴더 경로 추출 (파일명 제외)
-                let folderPath = '';
-                if (firstFilePath.includes('/')) {
-                    folderPath = firstFilePath.substring(0, firstFilePath.lastIndexOf('/'));
+                // 폴더명 추출 - 첫 번째 파일 경로에서 폴더명만 가져오기
+                let folderName = '';
+                let folderDisplay = '';
+                
+                if (files[0].webkitRelativePath) {
+                    // webkitRelativePath가 있는 경우: "폴더명/파일명" 또는 "폴더명/하위폴더/파일명" 형태
+                    const pathParts = files[0].webkitRelativePath.split('/');
+                    folderName = pathParts[0]; // 첫 번째가 폴더명 (드래그 앤 드롭한 폴더)
+                    folderDisplay = folderName; // 단순하게 폴더명만 표시
                 } else {
-                    folderPath = firstFilePath;
+                    // webkitRelativePath가 없는 경우
+                    folderName = '폴더';
+                    folderDisplay = folderName;
                 }
                 
-                // 서브폴더 구조 추출
-                let folderStructure = '';
-                if (folderPath) {
-                    const pathParts = folderPath.split('/');
-                    folderStructure = pathParts.map((part, index) => {
-                        if (index === 0) return `<strong style="color: var(--primary-color);">${part}</strong>`;
-                        return `<span style="color: var(--text-muted);">\\</span> <strong>${part}</strong>`;
-                    }).join(' ');
-                }
+                // 파일 크기 포맷팅 함수
+                const formatFileSize = (bytes) => {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+                };
                 
-                // 파일명만 추출 (경로 제외)
-                let fileNamesHTML = '';
-                const maxDisplay = Math.min(files.length, 15);
+                // 테이블 형태로 파일 리스트 생성
+                let fileListHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+                fileListHTML += '<thead><tr style="background: rgba(102, 126, 234, 0.1);">';
+                fileListHTML += '<th style="padding: 8px; text-align: left; width: 50px;">순번</th>';
+                fileListHTML += '<th style="padding: 8px; text-align: left;">파일명</th>';
+                fileListHTML += '<th style="padding: 8px; text-align: right; width: 100px;">크기</th>';
+                fileListHTML += '</tr></thead><tbody>';
+                
+                const maxDisplay = Math.min(files.length, 30);
                 for (let i = 0; i < maxDisplay; i++) {
-                    const fileName = files[i].webkitRelativePath ? 
-                        files[i].webkitRelativePath.substring(files[i].webkitRelativePath.lastIndexOf('/') + 1) : 
-                        files[i].name;
-                    fileNamesHTML += `<div style="font-size: 10px; padding: 2px 0;">• ${fileName}</div>`;
-                }
-                if (files.length > 15) {
-                    fileNamesHTML += `<div style="font-size: 10px; padding: 2px 0; color: var(--text-muted);">... 및 ${files.length - 15}개 더</div>`;
+                    const file = files[i];
+                    
+                    // 파일명 추출
+                    let fileName = '';
+                    if (file.webkitRelativePath) {
+                        // webkitRelativePath에서 마지막 슬래시 이후의 부분만 가져오기
+                        fileName = file.webkitRelativePath.split('/').pop();
+                    } else if (file.name) {
+                        fileName = file.name;
+                    } else {
+                        fileName = `file_${i + 1}`;
+                    }
+                    
+                    const fileSize = formatFileSize(file.size);
+                    
+                    fileListHTML += `<tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
+                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${i + 1}</td>
+                        <td style="padding: 6px; word-break: break-all;">${fileName}</td>
+                        <td style="padding: 6px; text-align: right; color: var(--text-muted);">${fileSize}</td>
+                    </tr>`;
                 }
                 
-                message.innerHTML = `
-                    <div class="loading">
-                        <div style="margin-bottom: 8px;"><strong>선택된 폴더:</strong></div>
-                        <div style="font-size: 11px; color: var(--text-primary); word-break: break-all; padding: 8px; background: rgba(102, 126, 234, 0.1); border-radius: 4px; margin-bottom: 12px; font-family: 'Courier New', monospace;">
-                            ${folderStructure || folderPath || '현재 폴더'}
+                fileListHTML += '</tbody></table>';
+                
+                if (files.length > 30) {
+                    fileListHTML += `<div style="margin-top: 10px; text-align: center; color: var(--text-muted); font-size: 12px;">... 및 ${files.length - 30}개 더</div>`;
+                }
+                
+                const finalHTML = `
+                    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;">📂 선택된 폴더:</div>
+                            <div style="font-size: 14px; color: var(--text-primary); word-break: break-all; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 4px; font-family: 'Courier New', monospace;">
+                                ${folderDisplay || folderName || '폴더'}
+                            </div>
                         </div>
-                        <div style="margin-bottom: 8px;"><strong>폴더 내 파일 (${files.length}개):</strong></div>
-                        <div style="font-size: 10px; color: var(--text-primary); word-break: break-all; padding: 8px; background: rgba(118, 75, 162, 0.1); border-radius: 4px; max-height: 200px; overflow-y: auto;">
-                            ${fileNamesHTML}
+                        <div>
+                            <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 12px;">📄 폴더 내 파일 (총 ${files.length}개):</div>
+                            <div style="max-height: 350px; overflow-y: auto;">
+                                ${fileListHTML}
+                            </div>
                         </div>
                     </div>
                 `;
+                
+                message.innerHTML = finalHTML;
+            } catch (error) {
+                console.error('파일 리스트 표시 중 오류 발생:', error);
+                message.innerHTML = `<div style="color: red; padding: 20px; text-align: center;">❌ 오류가 발생했습니다: ${error.message}</div>`;
+            }
+        }
+
+        // 파일 선택 시 파일 리스트 표시 (테이블 형식)
+        folderInput.addEventListener('change', function() {
+            const files = this.files;
+            if (files.length > 0) {
+                // 즉시 파일 리스트 표시 (alert 없이)
+                displayFileListFromFiles(files);
+                
+                // 폴더 선택 후 업로드 버튼 표시
+                document.getElementById('uploadButton').style.display = 'block';
             }
         });
 
-        // 폼 제출 처리
+        // 폼 제출 처리 (중복 방지 - 플래그 사용)
+        let isSubmitting = false;
+        
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // 이미 제출 중이면 무시
+            if (isSubmitting) {
+                return;
+            }
+            
+            isSubmitting = true;
             
             const files = folderInput.files;
             if (files.length === 0) {
                 message.innerHTML = '<div class="error">폴더를 선택해주세요.</div>';
+                isSubmitting = false;
                 return;
             }
 
@@ -256,6 +329,9 @@
                                 
                                 // 파일 목록 새로고침
                                 loadFileList();
+                                
+                                // 제출 플래그 리셋 (업로드 완료 후 즉시)
+                                isSubmitting = false;
                                 
                                 // 업로드된 파일들의 경로 추출 (첫 번째 파일의 디렉토리 경로 사용)
                                 let uploadDir = 'public/upload/files'; // 기본값
@@ -298,32 +374,45 @@
                                             setTimeout(() => {
                                                 showModal('처리 완료', `✅ ${data.files.length}개 파일이 MySQL DB에 성공적으로 저장되었습니다!`, false, true, false);
                                                 message.innerHTML = `<div class="success">폴더 업로드 및 처리가 완료되었습니다.</div>`;
+                                                document.getElementById('uploadButton').style.display = 'none';
                                                 loadFileList();
                                             }, 1000);
                                         } else {
                                             showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
                                             message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                            document.getElementById('uploadButton').style.display = 'none';
                                         }
                                     } catch (error) {
                                         showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${error.message}`, false, true, false);
                                         message.innerHTML = `<div class="error">MySQL DB 저장 중 오류가 발생했습니다.</div>`;
+                                        document.getElementById('uploadButton').style.display = 'none';
                                     }
                                     
-                                    folderInput.value = '';
+                                    // 업데이트된 folderInput 참조
+                                    const updatedFolderInput = document.getElementById('folderInput');
+                                    if (updatedFolderInput) {
+                                        updatedFolderInput.value = '';
+                                    }
                                     loadFileList();
                                 }, 1000);
                             } else {
                                 showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
                                 message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                                document.getElementById('uploadButton').style.display = 'none';
+                                isSubmitting = false;
                             }
                         } catch (error) {
                             showModal('응답 오류', '❌ 서버 응답을 처리할 수 없습니다.', false, true, false);
                             message.innerHTML = '<div class="error">서버 응답 처리 실패</div>';
+                            document.getElementById('uploadButton').style.display = 'none';
+                            isSubmitting = false;
                         }
                         resolve();
                     } else {
                         showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
                         message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                        document.getElementById('uploadButton').style.display = 'none';
+                        isSubmitting = false;
                         reject(new Error(`HTTP ${xhr.status}`));
                     }
                 });
@@ -332,6 +421,8 @@
                 xhr.addEventListener('error', function() {
                     showModal('서버 오류', '❌ 서버 연결에 실패했습니다.', false, true, false);
                     message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                    document.getElementById('uploadButton').style.display = 'none';
+                    isSubmitting = false;
                     reject(new Error('Network error'));
                 });
 
@@ -354,7 +445,7 @@
                     // 현재 페이지에 해당하는 파일만 추출
                     const startIndex = (currentPage - 1) * itemsPerPage;
                     const endIndex = startIndex + itemsPerPage;
-                    const currentFiles = data.files.slice(startIndex, endIndex);
+                    currentFiles = data.files.slice(startIndex, endIndex);
                     
                     // 파일 목록 HTML 생성
                     const fileListHtml = currentFiles.map((file, index) => `
@@ -377,6 +468,12 @@
                     document.getElementById('fileTableBody').innerHTML = fileListHtml;
                     document.getElementById('pagination').innerHTML = paginationHtml;
                     
+                    // 전체 삭제 버튼 표시
+                    const deleteAllBtn = document.getElementById('deleteAllBtn');
+                    if (deleteAllBtn) {
+                        deleteAllBtn.style.display = 'block';
+                    }
+                    
                     // 클릭 이벤트 추가
                     document.getElementById('fileTableBody').querySelectorAll('tr').forEach(row => {
                         row.addEventListener('click', function() {
@@ -389,6 +486,10 @@
                 } else {
                     document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
                     document.getElementById('pagination').innerHTML = '';
+                    const deleteAllBtn = document.getElementById('deleteAllBtn');
+                    if (deleteAllBtn) {
+                        deleteAllBtn.style.display = 'none';
+                    }
                 }
             } catch (error) {
                 console.error('Error loading file list:', error);
@@ -539,7 +640,7 @@
                     // 현재 페이지에 해당하는 파일만 추출
                     const startIndex = (currentPage - 1) * itemsPerPage;
                     const endIndex = startIndex + itemsPerPage;
-                    const currentFiles = data.files.slice(startIndex, endIndex);
+                    currentFiles = data.files.slice(startIndex, endIndex);
                     
                     // 파일 목록 HTML 생성
                     const fileListHtml = currentFiles.map((file, index) => `
@@ -561,6 +662,12 @@
                     
                     document.getElementById('fileTableBody').innerHTML = fileListHtml;
                     document.getElementById('pagination').innerHTML = paginationHtml;
+                    
+                    // 전체 삭제 버튼 표시
+                    const deleteAllBtn = document.getElementById('deleteAllBtn');
+                    if (deleteAllBtn) {
+                        deleteAllBtn.style.display = 'block';
+                    }
                 } else {
                     document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
                     document.getElementById('pagination').innerHTML = '';
@@ -593,6 +700,52 @@
                 } else {
                     alert('❌ 파일 삭제에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
                 }
+            } catch (error) {
+                console.error('파일 삭제 오류:', error);
+                alert('❌ 네트워크 오류: ' + error.message);
+            }
+        };
+
+        // 페이지 전체 삭제 함수
+        window.deleteAllFilesOnPage = async function() {
+            if (!currentFiles || currentFiles.length === 0) {
+                alert('삭제할 파일이 없습니다.');
+                return;
+            }
+
+            const fileCount = currentFiles.length;
+            const confirmed = confirm(`정말로 현재 페이지의 ${fileCount}개 파일을 모두 삭제하시겠습니까?`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const file of currentFiles) {
+                    try {
+                        const response = await fetch(`/api/delete-file/${encodeURIComponent(file.filename)}`, {
+                            method: 'DELETE'
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                        }
+                    } catch (error) {
+                        failCount++;
+                    }
+                }
+
+                if (failCount === 0) {
+                    alert(`✅ ${successCount}개 파일이 모두 삭제되었습니다.`);
+                } else {
+                    alert(`✅ ${successCount}개 파일 삭제 완료, ${failCount}개 파일 삭제 실패`);
+                }
+                
+                loadFileList();
             } catch (error) {
                 console.error('파일 삭제 오류:', error);
                 alert('❌ 네트워크 오류: ' + error.message);
