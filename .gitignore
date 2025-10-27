@@ -345,3 +345,6 @@ best_model/
 
 # Generated search visualization files
 python/rag/search/
+
+# folder for storing upload files
+public/upload/files/   
