@@ -31,9 +31,25 @@
         <div class="content-card">
             <h2>파일을 선택하여 업로드하세요</h2>
             <form id="uploadForm" enctype="multipart/form-data">
-                <div class="file-input-wrapper">
-                    <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx" required>
-                    <label for="fileInput" class="file-label">📄 파일 선택</label>
+                <div class="file-input-wrapper" id="dropZone" style="position: relative;">
+                    <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx,.csv,.html" required>
+                    <label for="fileInput" class="file-label">
+                        <span style="font-size: 48px; margin-bottom: 16px;">📄</span>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                            여기를 클릭하거나<br>
+                            파일을 드래그하세요
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-muted);">
+                            PDF, DOCX, CSV, TXT, HTML<br>
+                            파일만 지원합니다
+                        </div>
+                    </label>
+                    <div id="dropOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(102, 126, 234, 0.1); border: 3px dashed var(--primary-color); border-radius: 8px; pointer-events: none; z-index: 10;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; font-size: 48px;">
+                            📄
+                            <div style="margin-top: 16px; font-size: 18px; font-weight: 600; color: var(--primary-color);">여기에 놓으세요</div>
+                        </div>
+                    </div>
                 </div>
                 <div id="message" class="message"></div>
                 <button type="submit" id="uploadButton" class="upload-btn" style="display: none;">📤 파일 업로드</button>
@@ -88,7 +104,10 @@
             </div>
             <div class="modal-body">
                 <div id="modalMessage" class="modal-message"></div>
-                <div class="modal-spinner">
+                <div class="progress-bar-container" id="progressContainer" style="display: none;">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <div class="modal-spinner" id="modalSpinner">
                     <div class="spinner"></div>
                 </div>
             </div>
@@ -107,6 +126,9 @@
         const modalTitle = document.getElementById('modalTitle');
         const modalMessage = document.getElementById('modalMessage');
         const modalFooter = document.getElementById('modalFooter');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const modalSpinner = document.getElementById('modalSpinner');
         
         // 페이징 관련 변수
         let currentPage = 1;
@@ -162,18 +184,32 @@
         }
 
         // 모달 팝업 제어 함수
-        function showModal(title, messageText, showSpinner = true, showFooter = false) {
+        function showModal(title, messageText, showSpinner = true, showFooter = false, showProgress = false) {
             modalTitle.textContent = title;
             modalMessage.textContent = messageText;
             if (showSpinner) {
-                document.querySelector('.modal-spinner').style.display = 'block';
+                modalSpinner.style.display = 'block';
             } else {
-                document.querySelector('.modal-spinner').style.display = 'none';
+                modalSpinner.style.display = 'none';
+            }
+            if (showProgress) {
+                progressContainer.style.display = 'block';
+            } else {
+                progressContainer.style.display = 'none';
             }
             modalFooter.style.display = showFooter ? 'block' : 'none';
             uploadModal.style.display = 'flex';
             // 모든 버튼 비활성화
             disableAllButtons();
+        }
+        
+        // 진행 바 업데이트 함수
+        function updateProgress(percent, text = '') {
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+            if (text) {
+                modalMessage.textContent = text;
+            }
         }
 
         function closeModal() {
@@ -213,8 +249,17 @@
                     if (ext === 'pdf') return '📄';
                     if (ext === 'txt') return '📝';
                     if (ext === 'docx' || ext === 'doc') return '📘';
+                    if (ext === 'csv') return '📊';
+                    if (ext === 'html' || ext === 'htm') return '🌐';
                     return '📎';
                 };
+                
+                // 파일 타입 검증
+                if (!isValidFileType(file.name)) {
+                    message.innerHTML = '<div class="error">지원하지 않는 파일 형식입니다. PDF, DOCX, CSV, TXT, HTML 파일만 업로드 가능합니다.</div>';
+                    document.getElementById('uploadButton').style.display = 'none';
+                    return;
+                }
                 
                 const fileSize = formatFileSize(file.size);
                 const fileIcon = getFileIcon(file.name);
@@ -248,6 +293,115 @@
                 document.getElementById('uploadButton').style.display = 'block';
             }
         });
+        
+        // 드래그 앤 드롭 기능
+        const dropZone = document.getElementById('dropZone');
+        const dropOverlay = document.getElementById('dropOverlay');
+        
+        if (dropZone && dropOverlay) {
+            // 드래그 시작
+            dropZone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dropOverlay.style.display = 'block';
+            });
+            
+            // 드래그 중
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropOverlay.style.display = 'block';
+            });
+            
+            // 드래그 나가기
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (!dropZone.contains(e.relatedTarget)) {
+                    dropOverlay.style.display = 'none';
+                }
+            });
+            
+            // 드롭
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropOverlay.style.display = 'none';
+                
+                const files = e.dataTransfer.files;
+                
+                if (!files || files.length === 0) {
+                    message.innerHTML = '<div class="error">파일이 드롭되지 않았습니다.</div>';
+                    return;
+                }
+                
+                const file = files[0];
+                
+                // 파일 타입 검증
+                if (!isValidFileType(file.name)) {
+                    message.innerHTML = '<div class="error">지원하지 않는 파일 형식입니다. PDF, DOCX, CSV, TXT, HTML 파일만 업로드 가능합니다.</div>';
+                    return;
+                }
+                
+                // 파일을 input에 설정
+                try {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // 파일 크기 포맷팅 함수
+                    const formatFileSize = (bytes) => {
+                        if (bytes === 0) return '0 Bytes';
+                        const k = 1024;
+                        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+                    };
+                    
+                    // 파일 확장자에 따른 아이콘
+                    const getFileIcon = (fileName) => {
+                        const ext = fileName.split('.').pop().toLowerCase();
+                        if (ext === 'pdf') return '📄';
+                        if (ext === 'txt') return '📝';
+                        if (ext === 'docx' || ext === 'doc') return '📘';
+                        if (ext === 'csv') return '📊';
+                        if (ext === 'html' || ext === 'htm') return '🌐';
+                        return '📎';
+                    };
+                    
+                    const fileSize = formatFileSize(file.size);
+                    const fileIcon = getFileIcon(file.name);
+                    
+                    // 테이블 형태로 파일 정보 표시
+                    const fileListHTML = `
+                        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 12px;">📄 선택된 파일:</div>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: rgba(102, 126, 234, 0.1);">
+                                        <th style="padding: 8px; text-align: left; width: 50px;">아이콘</th>
+                                        <th style="padding: 8px; text-align: left;">파일명</th>
+                                        <th style="padding: 8px; text-align: right; width: 100px;">크기</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
+                                        <td style="padding: 6px; text-align: center; font-size: 24px;">${fileIcon}</td>
+                                        <td style="padding: 6px; word-break: break-all;">${file.name}</td>
+                                        <td style="padding: 6px; text-align: right; color: var(--text-muted);">${fileSize}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    message.innerHTML = fileListHTML;
+                    
+                    // 파일 선택 후 업로드 버튼 표시
+                    document.getElementById('uploadButton').style.display = 'block';
+                } catch (error) {
+                    console.error('파일 설정 오류:', error);
+                    message.innerHTML = '<div class="error">파일 설정 중 오류가 발생했습니다.</div>';
+                }
+            });
+        }
 
         // 폼 제출 처리
         form.addEventListener('submit', async (e) => {
@@ -260,74 +414,113 @@
                 showMessage('파일을 선택해주세요.', 'error');
                 return;
             }
+            
+            // 파일 타입 검증
+            if (!isValidFileType(file.name)) {
+                message.innerHTML = '<div class="error">지원하지 않는 파일 형식입니다. PDF, DOCX, CSV, TXT, HTML 파일만 업로드 가능합니다.</div>';
+                return;
+            }
 
             // 모달 표시 (처음)
-            showModal('파일 업로드', '📤 파일 업로드 중입니다...', true, false);
+            showModal('파일 업로드', '📤 파일 업로드 중입니다...', false, false, true);
+            updateProgress(0, '📤 파일 업로드 준비 중...');
             
-            try {
-                const response = await fetch('/file_upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // 업로드 완료 - 모달 업데이트
-                    showModal('업로드 완료', `✅ 파일 업로드가 완료되었습니다!\n파일명: ${data.file.originalName}`, false, false);
-                    
-                    // 파일 목록 새로고침
-                    loadFileList();
-                    
-                    // 2초 후 자동으로 Python 스크립트 실행
-                    setTimeout(async () => {
-                        // 파일내용 정리하여 MySQL DB에 입력 중 - 모달 업데이트
-                        showModal('파일 처리', '📝 파일내용 정리하여 MySQL DB에 입력중입니다...', true, false);
+            // XMLHttpRequest로 업로드 진행률 추적
+            const xhr = new XMLHttpRequest();
+            
+            // 업로드 진행률 추적
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    // 파일 업로드는 0-50%까지
+                    const uploadProgress = Math.min(percentComplete * 0.5, 50);
+                    updateProgress(uploadProgress, `📤 파일 업로드 중... (${Math.round(percentComplete)}%)`);
+                }
+            });
+            
+            // 업로드 완료
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
                         
-                        try {
-                            const pythonResponse = await fetch('/api/run-python', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ filePath: data.file.path })
-                            });
+                        if (data.success) {
+                            // 업로드 완료 - 50%
+                            updateProgress(50, `✅ 파일 업로드 완료! 파일명: ${data.file.originalName}`);
                             
-                            const pythonData = await pythonResponse.json();
+                            // 파일 목록 새로고침
+                            loadFileList();
                             
-                            if (pythonData.success) {
-                                // 처리 완료 - 모달 업데이트
-                                showModal('처리 완료', `✅ 파일이 MySQL DB에 성공적으로 저장되었습니다!\n파일명: ${data.file.originalName}`, false, true);
-                                message.innerHTML = `<div class="success">파일 업로드 및 처리가 완료되었습니다.</div>`;
-                                // 파일 목록 새로고침
-                                loadFileList();
-                            } else {
-                                showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true);
-                                message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                            // 1초 후 자동으로 Python 스크립트 실행
+                            setTimeout(async () => {
+                                // 파일내용 정리하여 MySQL DB에 입력 중 - 모달 업데이트
+                                updateProgress(50, '📝 파일 내용 분석 중...');
+                                
+                                try {
+                                    const pythonResponse = await fetch('/api/run-python', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ filePath: data.file.path })
+                                    });
+                                    
+                                    const pythonData = await pythonResponse.json();
+                                    
+                                    if (pythonData.success) {
+                                        // 처리 완료 - 100%
+                                        updateProgress(100, `✅ 처리 완료! 파일이 MySQL DB에 저장되었습니다.`);
+                                        
+                                        setTimeout(() => {
+                                            showModal('처리 완료', `✅ 파일이 MySQL DB에 성공적으로 저장되었습니다!\n파일명: ${data.file.originalName}`, false, true, false);
+                                            message.innerHTML = `<div class="success">파일 업로드 및 처리가 완료되었습니다.</div>`;
+                                            document.getElementById('uploadButton').style.display = 'none';
+                                            loadFileList();
+                                        }, 1000);
+                                    } else {
+                                        showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
+                                        message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                        document.getElementById('uploadButton').style.display = 'none';
+                                    }
+                                } catch (error) {
+                                    showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${error.message}`, false, true, false);
+                                    message.innerHTML = `<div class="error">MySQL DB 저장 중 오류가 발생했습니다.</div>`;
+                                    document.getElementById('uploadButton').style.display = 'none';
+                                }
+                                
+                                // 업로드 완료 후 input 리셋
+                                form.reset();
                                 document.getElementById('uploadButton').style.display = 'none';
-                            }
-                        } catch (error) {
-                            showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${error.message}`, false, true);
-                            message.innerHTML = `<div class="error">MySQL DB 저장 중 오류가 발생했습니다.</div>`;
+                                message.innerHTML = '';
+                                loadFileList();
+                            }, 1000);
+                        } else {
+                            showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
+                            message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
                             document.getElementById('uploadButton').style.display = 'none';
                         }
-                        
-                        form.reset();
-                        fileLabel.textContent = '파일 선택';
+                    } catch (error) {
+                        showModal('응답 오류', '❌ 서버 응답을 처리할 수 없습니다.', false, true, false);
+                        message.innerHTML = '<div class="error">서버 응답 처리 실패</div>';
                         document.getElementById('uploadButton').style.display = 'none';
-                        message.innerHTML = '';
-                        loadFileList(); // 파일 목록 새로고침
-                    }, 2000);
+                    }
                 } else {
-                    showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true);
-                    message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                    showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
+                    message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
                     document.getElementById('uploadButton').style.display = 'none';
                 }
-            } catch (error) {
-                showModal('서버 오류', '❌ 서버 오류가 발생했습니다.', false, true);
+            });
+            
+            // 오류 처리
+            xhr.addEventListener('error', function() {
+                showModal('서버 오류', '❌ 서버 연결에 실패했습니다.', false, true, false);
                 message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
                 document.getElementById('uploadButton').style.display = 'none';
-            }
+            });
+            
+            // 업로드 시작
+            xhr.open('POST', '/file_upload', true);
+            xhr.send(formData);
         });
 
         // 파일 목록 불러오기 (페이징 적용)
@@ -468,6 +661,12 @@
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // 파일 타입 검증 함수
+        function isValidFileType(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            return ['pdf', 'txt', 'docx', 'doc', 'csv', 'html', 'htm'].includes(ext);
         }
         
         // 날짜 포맷
