@@ -36,6 +36,19 @@
         </div>
 
         <div class="content-card">
+            <h2>벡터스토어에서 검색</h2>
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="searchInput" placeholder="검색하고 싶은 내용을 입력하세요..." style="flex: 1; padding: 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;">
+                    <button id="searchBtn" class="upload-btn" style="padding: 14px 32px; margin: 0; font-size: 16px; font-weight: 600;">🔍 검색</button>
+                </div>
+            </div>
+            <div id="searchResults" style="margin-top: 20px;">
+                <p style="text-align: center; color: var(--text-muted);">검색 결과가 여기에 표시됩니다.</p>
+            </div>
+        </div>
+
+        <div class="content-card">
             <h2>생성된 벡터스토어 목록</h2>
             <div id="vectorstoreList" class="vectorstore-list">
                 <table class="vectorstore-table">
@@ -301,6 +314,160 @@
                 progressModal.style.display = 'none';
             }
         });
+
+        // 벡터스토어 검색 기능
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchResults = document.getElementById('searchResults');
+        let selectedVectorstoreId = null;
+
+        // 벡터스토어 선택 이벤트
+        document.addEventListener('click', function(e) {
+            const row = e.target.closest('tr');
+            if (row && e.target.tagName !== 'BUTTON') {
+                // 이전 선택 제거
+                vectorstoreTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                // 현재 행 선택
+                row.classList.add('selected');
+                
+                const folderId = row.getAttribute('data-folder-id');
+                selectedVectorstoreId = folderId;
+                console.log('선택된 벡터스토어 ID:', selectedVectorstoreId);
+                
+                // 선택된 벡터스토어 표시
+                const selectedVectorstoreInfo = window.vectorstoreData?.find(f => f.id === folderId);
+                if (selectedVectorstoreInfo) {
+                    console.log(`✅ 검색에 사용될 벡터스토어: ${selectedVectorstoreInfo.name} (${selectedVectorstoreInfo.fileCount}개 문서)`);
+                }
+            }
+        });
+
+        // 검색 버튼 클릭 이벤트
+        searchBtn.addEventListener('click', async function() {
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                searchResults.innerHTML = '<div style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">❌ 검색어를 입력해주세요.</div>';
+                return;
+            }
+
+            searchBtn.disabled = true;
+            searchResults.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="margin-top: 10px; color: var(--text-muted);">검색 중...</p></div>';
+
+            try {
+                const response = await fetch('/api/search-vectorstore', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query, vectorstoreId: selectedVectorstoreId })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.results && data.results.length > 0) {
+                    // 검색 정보 표시
+                    const selectedInfo = selectedVectorstoreId 
+                        ? window.vectorstoreData?.find(f => f.id === selectedVectorstoreId)
+                        : window.vectorstoreData?.[0];
+                    
+                    let resultsHTML = `
+                        <div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+                            <div style="font-size: 14px; font-weight: 600;">🔍 검색어: "${query}"</div>
+                            <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">
+                                📦 사용된 벡터스토어: ${selectedInfo ? `${selectedInfo.name} (${selectedInfo.fileCount}개 문서)` : '최신 벡터스토어'}
+                            </div>
+                        </div>
+                    `;
+                    resultsHTML += '<div style="margin-top: 20px;">';
+                    data.results.forEach(item => {
+                        const medal = item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : '🏅';
+                        const relevanceColor = item.relevance >= 80 ? '#10b981' : item.relevance >= 50 ? '#f59e0b' : '#ef4444';
+                        resultsHTML += `
+                            <div style="margin-bottom: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                                <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                    <div style="font-size: 36px; flex-shrink: 0;">${medal}</div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                            <div style="font-size: 18px; font-weight: 600; color: var(--primary-color);">
+                                                ${item.rank}순위 - ${item.file_name}
+                                            </div>
+                                            <div style="padding: 6px 16px; background: ${relevanceColor}; color: white; border-radius: 20px; font-weight: 700; font-size: 16px; box-shadow: 0 2px 8px ${relevanceColor}66;">
+                                                ${item.relevance}% 유사도
+                                            </div>
+                                        </div>
+                                        <div style="margin-bottom: 10px;">
+                                            <span style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">📁 ${item.file_location}</span>
+                                        </div>
+                                        <div style="margin-bottom: 10px;">
+                                            <strong style="color: var(--text-primary);">📝 요약:</strong>
+                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px;">
+                                                ${item.summary}
+                                            </div>
+                                        </div>
+                                        <div style="margin-bottom: 10px;">
+                                            <strong style="color: var(--text-primary);">🗝️ 키워드:</strong>
+                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px;">
+                                                ${item.keywords}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <strong style="color: var(--text-primary);">📄 내용 미리보기:</strong>
+                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px; white-space: pre-wrap; word-break: break-word;">
+                                                ${item.content_preview}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    resultsHTML += '</div>';
+                    searchResults.innerHTML = resultsHTML;
+                } else if (data.ollamaError) {
+                    searchResults.innerHTML = `
+                        <div style="padding: 30px; border-radius: 12px; background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); color: #856404; border-left: 5px solid #ffc107; text-align: center; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);">
+                            <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 15px; color: #856404;">
+                                Ollama 서버가 꺼져 있습니다
+                            </div>
+                            <div style="font-size: 17px; margin-bottom: 20px; color: #856404;">
+                                Ollama 서버를 실행한 후 다시 시도해주세요.
+                            </div>
+                            <div style="font-size: 15px; color: #856404; opacity: 0.9; line-height: 1.8;">
+                                <strong>다음 명령어로 Ollama 서버를 실행하세요:</strong><br>
+                                <code style="background: rgba(0,0,0,0.1); padding: 10px 16px; border-radius: 6px; font-family: 'Courier New', monospace; display: inline-block; margin-top: 12px; font-size: 16px; color: #856404;">ollama serve & ollama pull exaone3.5:2.4b</code>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    searchResults.innerHTML = `
+                        <div style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">
+                            ❌ 검색 결과가 없습니다.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('검색 오류:', error);
+                searchResults.innerHTML = `
+                    <div style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">
+                        ❌ 검색 중 오류가 발생했습니다: ${error.message}
+                    </div>
+                `;
+            } finally {
+                searchBtn.disabled = false;
+            }
+        });
+
+        // CSS 애니메이션 추가
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

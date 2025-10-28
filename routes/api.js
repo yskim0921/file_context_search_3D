@@ -298,6 +298,116 @@ router.get('/vectorstore-list', async (req, res) => {
   }
 });
 
+// 벡터스토어 검색 API
+router.post('/search-vectorstore', express.json(), async (req, res) => {
+  console.log('📬 벡터스토어 검색 API 호출됨');
+  console.log('Request body:', req.body);
+  
+  const { query, vectorstoreId } = req.body;
+  
+  if (!query) {
+    console.log('❌ 검색 쿼리 없음');
+    return res.status(400).json({ 
+      success: false,
+      message: '검색 쿼리가 제공되지 않았습니다.' 
+    });
+  }
+  
+  // ollama 서버 체크
+  console.log('🔍 Ollama 서버 상태 확인 중...');
+  const isOllamaRunning = await checkOllamaServer();
+  
+  if (!isOllamaRunning) {
+    console.log('❌ 벡터스토어 검색 실패: Ollama 서버가 꺼져 있습니다.');
+    return res.status(500).json({ 
+      success: false,
+      message: 'Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.',
+      ollamaError: true,
+      details: '벡터스토어 검색 기능을 사용하려면 Ollama 서버가 실행 중이어야 합니다.'
+    });
+  }
+  
+  try {
+    // documents 폴더에서 최신 폴더 직접 찾기
+    const documentsPath = path.join(__dirname, '..', 'python', 'vector_store', 'rag_chroma', 'documents');
+    
+    let vectorstorePath;
+    let folderName;
+    
+    if (fs.existsSync(documentsPath)) {
+      const items = fs.readdirSync(documentsPath);
+      // 폴더만 필터링 (파일 제외, 숨김 파일 제외)
+      const folders = items.filter(item => {
+        const itemPath = path.join(documentsPath, item);
+        return fs.statSync(itemPath).isDirectory() && !item.startsWith('.');
+      });
+      
+      if (folders.length > 0) {
+        // 폴더명으로 정렬하여 최신 폴더 찾기
+        folders.sort().reverse();
+        folderName = folders[0];
+        vectorstorePath = path.join(documentsPath, folderName);
+        console.log(`✅ documents 폴더에서 최신 벡터스토어 사용: ${folderName}`);
+      } else {
+        return res.status(404).json({ 
+          success: false,
+          message: '벡터스토어 폴더를 찾을 수 없습니다.' 
+        });
+      }
+    } else {
+      return res.status(404).json({ 
+        success: false,
+        message: 'documents 폴더가 존재하지 않습니다.' 
+      });
+    }
+    
+    // Python 스크립트 실행
+    const pythonScript = path.join(__dirname, '..', 'python', 'vector_store', 'vector_store_search.py');
+    
+    // conda 환경(file_search)에서 Python 스크립트 실행
+    const command = `conda run -n file_search python "${pythonScript}" "${query}" "${vectorstorePath}"`;
+    
+    console.log('🚀 벡터스토어 검색 스크립트 실행:', command);
+    
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error('벡터스토어 검색 오류:', error);
+        return res.status(500).json({ 
+          success: false,
+          message: '벡터스토어 검색 중 오류가 발생했습니다.',
+          error: error.message,
+          stderr: stderr
+        });
+      }
+      
+      console.log('벡터스토어 검색 출력:', stdout);
+      
+      // 결과 파싱 (JSON 형식으로 출력되어야 함)
+      try {
+        const results = JSON.parse(stdout);
+        res.json({
+          success: true,
+          message: '벡터스토어 검색이 완료되었습니다.',
+          results: results
+        });
+      } catch (parseError) {
+        res.json({
+          success: true,
+          message: '벡터스토어 검색이 완료되었습니다.',
+          rawOutput: stdout
+        });
+      }
+    });
+  } catch (error) {
+    console.error('벡터스토어 검색 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '벡터스토어 검색 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // 벡터스토어 삭제 API
 router.delete('/delete-vectorstore/:id', async (req, res) => {
   const id = req.params.id;
