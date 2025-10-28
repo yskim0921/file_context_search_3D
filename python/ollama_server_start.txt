@@ -1,0 +1,1 @@
+ollama serve & ollama pull exaone3.5:2.4b

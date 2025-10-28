@@ -212,6 +212,15 @@
             }
         });
 
+        // 허용된 파일 확장자 목록
+        const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'doc', 'csv', 'txt', 'html', 'htm'];
+        
+        // 파일 타입 검증 함수
+        function isValidFileType(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            return ALLOWED_EXTENSIONS.includes(ext);
+        }
+        
         // 파일 리스트 표시 함수 (공통)
         function displayFileListFromFiles(files) {
             try {
@@ -219,6 +228,31 @@
                     message.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">❌ 표시할 파일이 없습니다.</div>';
                     return;
                 }
+                
+                // 파일 분류
+                const allowedFiles = [];
+                const disallowedFiles = [];
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    let fileName = '';
+                    if (file.webkitRelativePath) {
+                        fileName = file.webkitRelativePath.split('/').pop();
+                    } else if (file.name) {
+                        fileName = file.name;
+                    } else {
+                        fileName = `file_${i + 1}`;
+                    }
+                    
+                    if (isValidFileType(fileName)) {
+                        allowedFiles.push(file);
+                    } else {
+                        disallowedFiles.push(file);
+                    }
+                }
+                
+                // 허용된 파일 저장 (업로드 시 사용)
+                window.filteredFiles = allowedFiles;
                 
                 // 첫 번째 파일의 전체 경로 추출
                 const firstFilePath = files[0].webkitRelativePath || files[0].name;
@@ -228,12 +262,10 @@
                 let folderDisplay = '';
                 
                 if (files[0].webkitRelativePath) {
-                    // webkitRelativePath가 있는 경우: "폴더명/파일명" 또는 "폴더명/하위폴더/파일명" 형태
                     const pathParts = files[0].webkitRelativePath.split('/');
-                    folderName = pathParts[0]; // 첫 번째가 폴더명 (드래그 앤 드롭한 폴더)
-                    folderDisplay = folderName; // 단순하게 폴더명만 표시
+                    folderName = pathParts[0];
+                    folderDisplay = folderName;
                 } else {
-                    // webkitRelativePath가 없는 경우
                     folderName = '폴더';
                     folderDisplay = folderName;
                 }
@@ -255,34 +287,59 @@
                 fileListHTML += '<th style="padding: 8px; text-align: right; width: 100px;">크기</th>';
                 fileListHTML += '</tr></thead><tbody>';
                 
-                const maxDisplay = Math.min(files.length, 30);
-                for (let i = 0; i < maxDisplay; i++) {
-                    const file = files[i];
-                    
-                    // 파일명 추출
+                let rowIndex = 1;
+                
+                // 허용된 파일 먼저 표시
+                const maxAllowedDisplay = Math.min(allowedFiles.length, 30);
+                for (let i = 0; i < maxAllowedDisplay; i++) {
+                    const file = allowedFiles[i];
                     let fileName = '';
                     if (file.webkitRelativePath) {
-                        // webkitRelativePath에서 마지막 슬래시 이후의 부분만 가져오기
                         fileName = file.webkitRelativePath.split('/').pop();
                     } else if (file.name) {
                         fileName = file.name;
                     } else {
                         fileName = `file_${i + 1}`;
                     }
-                    
                     const fileSize = formatFileSize(file.size);
                     
                     fileListHTML += `<tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
-                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${i + 1}</td>
+                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${rowIndex++}</td>
                         <td style="padding: 6px; word-break: break-all;">${fileName}</td>
                         <td style="padding: 6px; text-align: right; color: var(--text-muted);">${fileSize}</td>
                     </tr>`;
                 }
                 
+                // 허용되지 않은 파일 표시 (빨간 취소선)
+                const maxDisallowedDisplay = Math.min(disallowedFiles.length, 30 - rowIndex + 1);
+                for (let i = 0; i < maxDisallowedDisplay; i++) {
+                    const file = disallowedFiles[i];
+                    let fileName = '';
+                    if (file.webkitRelativePath) {
+                        fileName = file.webkitRelativePath.split('/').pop();
+                    } else if (file.name) {
+                        fileName = file.name;
+                    } else {
+                        fileName = `file_${i + 1}`;
+                    }
+                    const fileSize = formatFileSize(file.size);
+                    
+                    fileListHTML += `<tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
+                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${rowIndex++}</td>
+                        <td style="padding: 6px; word-break: break-all; color: #f5576c; text-decoration: line-through;">${fileName}</td>
+                        <td style="padding: 6px; text-align: right; color: #f5576c;">${fileSize}</td>
+                    </tr>`;
+                }
+                
                 fileListHTML += '</tbody></table>';
                 
-                if (files.length > 30) {
-                    fileListHTML += `<div style="margin-top: 10px; text-align: center; color: var(--text-muted); font-size: 12px;">... 및 ${files.length - 30}개 더</div>`;
+                // 총계 정보
+                let summaryInfo = '';
+                if (allowedFiles.length > 0 || disallowedFiles.length > 0) {
+                    summaryInfo = `<div style="margin-top: 12px; padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 4px; font-size: 13px;">
+                        <div style="margin-bottom: 4px;">✅ 업로드 가능한 파일: <strong>${allowedFiles.length}</strong>개</div>
+                        ${disallowedFiles.length > 0 ? `<div style="color: #f5576c;">❌ 업로드 불가능한 파일: <strong style="text-decoration: line-through;">${disallowedFiles.length}</strong>개</div>` : ''}
+                    </div>`;
                 }
                 
                 const finalHTML = `
@@ -298,6 +355,7 @@
                             <div style="max-height: 350px; overflow-y: auto;">
                                 ${fileListHTML}
                             </div>
+                            ${summaryInfo}
                         </div>
                     </div>
                 `;
@@ -340,15 +398,26 @@
                 isSubmitting = false;
                 return;
             }
+            
+            // 허용된 파일만 필터링
+            const filesToUpload = window.filteredFiles && window.filteredFiles.length > 0 
+                ? window.filteredFiles 
+                : []; // Fallback
+            
+            if (!filesToUpload || filesToUpload.length === 0) {
+                message.innerHTML = '<div class="error">허용된 파일 형식(PDF, DOCX, CSV, TXT, HTML)이 폴더에 없습니다.</div>';
+                isSubmitting = false;
+                return;
+            }
 
             const formData = new FormData();
-            for (let i = 0; i < files.length; i++) {
-                formData.append('files', files[i]);
+            for (let i = 0; i < filesToUpload.length; i++) {
+                formData.append('files', filesToUpload[i]);
             }
 
             // 모달 표시 (처음)
-            showModal('폴더 업로드', `📤 폴더 업로드 중입니다...\n${files.length}개 파일`, false, false, true);
-            updateProgress(0, `📤 파일 업로드 준비 중... (0/${files.length})`);
+            showModal('폴더 업로드', `📤 폴더 업로드 중입니다...\n${filesToUpload.length}개 파일`, false, false, true);
+            updateProgress(0, `📤 파일 업로드 준비 중... (0/${filesToUpload.length})`);
 
             // XMLHttpRequest로 업로드 진행률 추적
             return new Promise((resolve, reject) => {
@@ -419,8 +488,14 @@
                                                 loadFileList();
                                             }, 1000);
                                         } else {
-                                            showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
-                                            message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                            // ollama 서버 체크
+                                            if (pythonData.ollamaError) {
+                                                showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                                                message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                                            } else {
+                                                showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
+                                                message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                            }
                                             document.getElementById('uploadButton').style.display = 'none';
                                         }
                                     } catch (error) {
@@ -437,8 +512,14 @@
                                     loadFileList();
                                 }, 1000);
                             } else {
-                                showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
-                                message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                                // ollama 서버 체크
+                                if (data.ollamaError) {
+                                    showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                                    message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                                } else {
+                                    showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
+                                    message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                                }
                                 document.getElementById('uploadButton').style.display = 'none';
                                 isSubmitting = false;
                             }
@@ -450,8 +531,20 @@
                         }
                         resolve();
                     } else {
-                        showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
-                        message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                        // ollama 서버 체크 (500 상태 코드)
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.ollamaError) {
+                                showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                                message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                            } else {
+                                showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
+                                message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                            }
+                        } catch (e) {
+                            showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
+                            message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                        }
                         document.getElementById('uploadButton').style.display = 'none';
                         isSubmitting = false;
                         reject(new Error(`HTTP ${xhr.status}`));

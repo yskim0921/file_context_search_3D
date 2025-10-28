@@ -5,6 +5,19 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const { query } = require('../db');
 
+// ollama 서버 체크 함수
+function checkOllamaServer() {
+  return new Promise((resolve) => {
+    exec('ps aux | grep ollama | grep -v grep', (error, stdout, stderr) => {
+      if (error || !stdout || stdout.trim().length === 0) {
+        resolve(false); // ollama 서버가 실행 중이 아님
+      } else {
+        resolve(true); // ollama 서버가 실행 중
+      }
+    });
+  });
+}
+
 // ============================================
 // API 라우트
 // ============================================
@@ -78,13 +91,24 @@ router.delete('/delete-file/:filename', async (req, res) => {
 });
 
 // Python 스크립트 실행 API (conda 환경 사용)
-router.post('/run-python', express.json(), (req, res) => {
+router.post('/run-python', express.json(), async (req, res) => {
   const { filePath } = req.body;
   
   if (!filePath) {
     return res.status(400).json({ 
       success: false,
       message: '파일 경로가 제공되지 않았습니다.' 
+    });
+  }
+  
+  // ollama 서버 체크
+  const isOllamaRunning = await checkOllamaServer();
+  if (!isOllamaRunning) {
+    console.log('❌ Ollama 서버가 실행 중이 아닙니다.');
+    return res.status(500).json({ 
+      success: false,
+      message: 'Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.',
+      ollamaError: true
     });
   }
   
@@ -124,7 +148,7 @@ router.post('/run-python', express.json(), (req, res) => {
 });
 
 // 폴더 업로드용 Python 스크립트 실행 API (conda 환경 사용)
-router.post('/run-folder-python', express.json(), (req, res) => {
+router.post('/run-folder-python', express.json(), async (req, res) => {
   console.log('📬 폴더 Python API 호출됨');
   console.log('Request body:', req.body);
   
@@ -135,6 +159,17 @@ router.post('/run-folder-python', express.json(), (req, res) => {
     return res.status(400).json({ 
       success: false,
       message: '폴더 경로가 제공되지 않았습니다.' 
+    });
+  }
+  
+  // ollama 서버 체크
+  const isOllamaRunning = await checkOllamaServer();
+  if (!isOllamaRunning) {
+    console.log('❌ Ollama 서버가 실행 중이 아닙니다.');
+    return res.status(500).json({ 
+      success: false,
+      message: 'Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.',
+      ollamaError: true
     });
   }
   

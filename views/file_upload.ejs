@@ -478,8 +478,14 @@
                                             loadFileList();
                                         }, 1000);
                                     } else {
-                                        showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
-                                        message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                        // ollama 서버 체크
+                                        if (pythonData.ollamaError) {
+                                            showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                                            message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                                        } else {
+                                            showModal('처리 오류', `⚠️ MySQL DB 저장 중 오류가 발생했습니다.\n오류: ${pythonData.message}`, false, true, false);
+                                            message.innerHTML = `<div class="error">파일 처리 중 오류가 발생했습니다.</div>`;
+                                        }
                                         document.getElementById('uploadButton').style.display = 'none';
                                     }
                                 } catch (error) {
@@ -495,8 +501,14 @@
                                 loadFileList();
                             }, 1000);
                         } else {
-                            showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
-                            message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                            // ollama 서버 체크
+                            if (data.ollamaError) {
+                                showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                                message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                            } else {
+                                showModal('업로드 실패', `❌ 업로드 실패: ${data.message}`, false, true, false);
+                                message.innerHTML = `<div class="error">업로드 실패: ${data.message}</div>`;
+                            }
                             document.getElementById('uploadButton').style.display = 'none';
                         }
                     } catch (error) {
@@ -505,8 +517,20 @@
                         document.getElementById('uploadButton').style.display = 'none';
                     }
                 } else {
-                    showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
-                    message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                    // ollama 서버 체크 (500 상태 코드)
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.ollamaError) {
+                            showModal('Ollama 서버 오류', `❌ Ollama 서버가 꺼져 있습니다.\n\nOllama 서버를 실행한 후 다시 시도해주세요.`, false, true, false);
+                            message.innerHTML = `<div class="error">Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.</div>`;
+                        } else {
+                            showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
+                            message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                        }
+                    } catch (e) {
+                        showModal('서버 오류', `❌ 서버 오류 (${xhr.status})`, false, true, false);
+                        message.innerHTML = '<div class="error">서버 오류가 발생했습니다.</div>';
+                    }
                     document.getElementById('uploadButton').style.display = 'none';
                 }
             });
