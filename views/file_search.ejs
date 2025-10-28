@@ -65,6 +65,11 @@
         const aiSearchResults = document.getElementById('aiSearchResults');
         const searchHistory = document.getElementById('searchHistory');
         let allFiles = [];
+        
+        // 검색 기록 페이징 관련 변수
+        let currentHistoryPage = 1;
+        const historyItemsPerPage = 3;
+        let allHistoryItems = [];
 
         // 페이지 로드 시 모든 파일 가져오기
         async function loadAllFiles() {
@@ -229,34 +234,55 @@
                 const data = await response.json();
                 
                 if (data.success && data.history.length > 0) {
-                    searchHistory.innerHTML = data.history.map(item => {
-                        // 순위 정보 생성
-                        let rankingInfo = '';
-                        if (item.rankingResult && Array.isArray(item.rankingResult) && item.rankingResult.length > 0) {
-                            const top3 = item.rankingResult.slice(0, 3);
-                            const medals = ['🥇', '🥈', '🥉'];
-                            rankingInfo = top3.map((rank, idx) => {
-                                const medal = medals[idx] || '🏅';
-                                return `${medal} ${(rank.file_name || '').replace(/'/g, '')} (${rank.relevance || 0}%)`;
-                            }).join(', ');
-                        }
-                        
-                        // 안전한 문자열 처리를 위한 함수
-                        const escapeHtml = (str) => {
-                            if (!str) return '';
-                            return String(str)
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#039;');
-                        };
-                        
-                        const safeQuery = escapeHtml(item.query);
-                        const safeHtmlPath = escapeHtml(item.htmlFilePath || '');
-                        const safeBarPath = escapeHtml(item.barChartPath || '');
-                        
-                        return `
+                    allHistoryItems = data.history;
+                    displayHistoryPage();
+                } else {
+                    searchHistory.innerHTML = '<p style="text-align: center; color: var(--text-muted);">검색 기록이 없습니다.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading search history:', error);
+                searchHistory.innerHTML = '<p style="text-align: center; color: red;">검색 기록을 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        // 검색 기록 페이지 표시
+        function displayHistoryPage() {
+            const totalPages = Math.ceil(allHistoryItems.length / historyItemsPerPage);
+            const startIndex = (currentHistoryPage - 1) * historyItemsPerPage;
+            const endIndex = startIndex + historyItemsPerPage;
+            const currentItems = allHistoryItems.slice(startIndex, endIndex);
+            
+            if (currentItems.length > 0) {
+                let historyHTML = '<div>';
+                
+                currentItems.forEach(item => {
+                    // 순위 정보 생성
+                    let rankingInfo = '';
+                    if (item.rankingResult && Array.isArray(item.rankingResult) && item.rankingResult.length > 0) {
+                        const top3 = item.rankingResult.slice(0, 3);
+                        const medals = ['🥇', '🥈', '🥉'];
+                        rankingInfo = top3.map((rank, idx) => {
+                            const medal = medals[idx] || '🏅';
+                            return `${medal} ${(rank.file_name || '').replace(/'/g, '')} (${rank.relevance || 0}%)`;
+                        }).join(', ');
+                    }
+                    
+                    // 안전한 문자열 처리를 위한 함수
+                    const escapeHtml = (str) => {
+                        if (!str) return '';
+                        return String(str)
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+                    };
+                    
+                    const safeQuery = escapeHtml(item.query);
+                    const safeHtmlPath = escapeHtml(item.htmlFilePath || '');
+                    const safeBarPath = escapeHtml(item.barChartPath || '');
+                    
+                    historyHTML += `
                         <div class="file-item" style="margin-bottom: 10px;">
                             <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px; cursor: pointer;" onclick="viewSearchHistory(${item.id}, '${safeHtmlPath}', '${safeBarPath}', '${safeQuery.replace(/'/g, "\\'")}')">
                                 <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;">
@@ -270,15 +296,78 @@
                                 </div>
                             </div>
                         </div>
-                        `;
-                    }).join('');
-                } else {
-                    searchHistory.innerHTML = '<p style="text-align: center; color: var(--text-muted);">검색 기록이 없습니다.</p>';
+                    `;
+                });
+                
+                historyHTML += '</div>';
+                
+                // 페이징 버튼 추가
+                if (totalPages > 1) {
+                    historyHTML += createHistoryPaginationHtml(currentHistoryPage, totalPages, allHistoryItems.length);
                 }
-            } catch (error) {
-                console.error('Error loading search history:', error);
-                searchHistory.innerHTML = '<p style="text-align: center; color: red;">검색 기록을 불러오는데 실패했습니다.</p>';
+                
+                searchHistory.innerHTML = historyHTML;
+            } else {
+                searchHistory.innerHTML = '<p style="text-align: center; color: var(--text-muted);">검색 기록이 없습니다.</p>';
             }
+        }
+        
+        // 페이징 버튼 HTML 생성
+        function createHistoryPaginationHtml(currentPage, totalPages, totalItems) {
+            let html = '<div class="pagination" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">';
+            
+            // 이전 버튼
+            if (currentPage > 1) {
+                html += `<button class="page-btn" onclick="goToHistoryPage(${currentPage - 1})" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">이전</button>`;
+            } else {
+                html += `<button class="page-btn disabled" disabled style="padding: 8px 16px; background: var(--border-color); color: var(--text-muted); border: none; border-radius: 6px; cursor: not-allowed;">이전</button>`;
+            }
+            
+            // 페이지 번호
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (startPage > 1) {
+                html += `<button class="page-btn" onclick="goToHistoryPage(1)" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="page-ellipsis" style="padding: 8px 4px; color: var(--text-muted);">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<button class="page-btn active" style="padding: 8px 16px; background: var(--primary-color); color: white; border: 2px solid var(--primary-color); border-radius: 6px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">${i}</button>`;
+                } else {
+                    html += `<button class="page-btn" onclick="goToHistoryPage(${i})" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">${i}</button>`;
+                }
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="page-ellipsis" style="padding: 8px 4px; color: var(--text-muted);">...</span>`;
+                }
+                html += `<button class="page-btn" onclick="goToHistoryPage(${totalPages})" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">${totalPages}</button>`;
+            }
+            
+            // 다음 버튼
+            if (currentPage < totalPages) {
+                html += `<button class="page-btn" onclick="goToHistoryPage(${currentPage + 1})" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">다음</button>`;
+            } else {
+                html += `<button class="page-btn disabled" disabled style="padding: 8px 16px; background: var(--border-color); color: var(--text-muted); border: none; border-radius: 6px; cursor: not-allowed;">다음</button>`;
+            }
+            
+            html += `<span class="page-info" style="margin-left: 10px; color: var(--text-muted); font-size: 14px;">(총 ${totalItems}개)</span>`;
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // 페이지 이동 함수
+        function goToHistoryPage(page) {
+            currentHistoryPage = page;
+            displayHistoryPage();
+            // 검색 기록 섹션으로 스크롤
+            searchHistory.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // 검색 기록 상세 보기

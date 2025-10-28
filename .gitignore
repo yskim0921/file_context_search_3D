@@ -348,3 +348,6 @@ python/rag/search/
 
 # folder for storing upload files
 public/upload/files/   
+
+# folder for rag_chroma documents
+python/vector_store/rag_chroma/documents/
