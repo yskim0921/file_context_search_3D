@@ -7,8 +7,122 @@
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/file_upload.css">
     <link rel="stylesheet" href="/css/file_rag.css">
+    <style>
+        /* 진행 상황 모달 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content-progress {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 40px;
+            min-width: 500px;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header-progress h2 {
+            color: white;
+            margin: 0 0 30px 0;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .modal-body-progress {
+            text-align: center;
+        }
+        
+        .progress-status {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            min-height: 30px;
+        }
+        
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+            height: 50px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #ffd700 0%, #ffed4e 50%, #ffff00 100%);
+            height: 100%;
+            border-radius: 30px;
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+        
+        .progress-percentage {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+    </style>
 </head>
 <body>
+    <!-- 진행 상황 모달 -->
+    <div id="progressModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content-progress">
+            <div class="modal-header-progress">
+                <h2 id="modalTitle">AI 검색</h2>
+            </div>
+            <div class="modal-body-progress">
+                <div class="progress-status" id="progressStatus">초기화 중...</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+        </div>
+    </div>
+
     <div class="page-wrapper">
         <div class="page-header">
             <div class="title-container">
@@ -108,16 +222,16 @@
                 return;
             }
             
-            // 로딩 표시
-            aiSearchResults.innerHTML = `
-                <div style="padding: 20px; text-align: center;">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 15px; font-size: 14px; color: var(--text-primary);">AI 검색 중입니다... 잠시만 기다려주세요.</p>
-                </div>
-            `;
+            console.log('AI 검색 시작:', query);
+            
+            // 검색 모달 표시 (progress bar 포함)
+            showProgressModal('AI 검색');
+            updateProgress(10, '🔍 Ollama 서버 확인 중...');
             aiSearchBtn.disabled = true;
             
             try {
+                updateProgress(20, '🔑 ChromaDB 검색 중...');
+                
                 const response = await fetch('/api/ai-search', {
                     method: 'POST',
                     headers: {
@@ -126,55 +240,148 @@
                     body: JSON.stringify({ query: query })
                 });
                 
+                updateProgress(50, '📊 유사도 계산 중...');
+                
                 const data = await response.json();
+                console.log('API 응답 데이터:', data);
+                
+                // Ollama 서버 오류 체크
+                if (!data.success && data.ollamaError) {
+                    // 진행 모달을 오류 메시지로 변경 (빨간색 진행 바)
+                    updateProgress(0, '❌ Ollama 서버가 연결되지 않았습니다', true);
+                    
+                    // 모달 제목과 상태를 오류로 변경
+                    document.getElementById('modalTitle').textContent = '⚠️ Ollama 서버 오류';
+                    document.getElementById('modalTitle').style.color = '#ffc107';
+                    
+                    // 5초 후 모달 닫기
+                    setTimeout(() => {
+                        closeProgressModal();
+                        
+                        // 에러 메시지 표시
+                        aiSearchResults.innerHTML = `
+                            <div class="error" style="padding: 30px; border-radius: 12px; background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); color: #856404; border-left: 5px solid #ffc107; text-align: center; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);">
+                                <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+                                <div style="font-size: 24px; font-weight: 700; margin-bottom: 15px; color: #856404;">
+                                    Ollama 서버가 꺼져 있습니다
+                                </div>
+                                <div style="font-size: 17px; margin-bottom: 20px; color: #856404;">
+                                    ${data.message || 'Ollama 서버가 실행되지 않았습니다.'}
+                                </div>
+                                ${data.details ? `<div style="font-size: 15px; color: #856404; opacity: 0.85; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.5); border-radius: 8px;">
+                                    ${data.details}
+                                </div>` : ''}
+                                <div style="font-size: 15px; color: #856404; opacity: 0.9; line-height: 1.8;">
+                                    <strong>다음 명령어로 Ollama 서버를 실행하세요:</strong><br>
+                                    <code style="background: rgba(0,0,0,0.1); padding: 10px 16px; border-radius: 6px; font-family: 'Courier New', monospace; display: inline-block; margin-top: 12px; font-size: 16px; color: #856404;">ollama serve & ollama pull exaone3.5:2.4b</code>
+                                </div>
+                            </div>
+                        `;
+                        aiSearchBtn.disabled = false;
+                    }, 5000);
+                    return;
+                }
+                
+                updateProgress(80, '🤖 AI 답변 생성 중...');
                 
                 if (data.success) {
-                    let resultHTML = `
-                        <div class="success" style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #d4f5dc 0%, #b8e6c8 100%); color: #0f5132; border-left: 3px solid #28a745; white-space: pre-wrap; margin-bottom: 15px;">
-                            ✅ AI 검색이 완료되었습니다!<br><br>
-                            <strong>검색 결과:</strong><br>
-                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit;">${data.output || data.message}</pre>
-                        </div>
-                    `;
+                    console.log('AI 검색 성공');
+                    updateProgress(100, '✅ AI 검색 완료!');
                     
-                    // Bar Chart가 생성되었다면 먼저 표시
-                    if (data.barChartPath) {
-                        resultHTML += `
-                            <div style="margin-top: 20px;">
-                                <h3 style="margin-bottom: 10px; font-size: 16px; color: var(--text-primary);">📊 검색 결과 관련성</h3>
-                                <iframe src="${data.barChartPath}" style="width: 100%; height: 400px; border: 2px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md);"></iframe>
-                            </div>
-                        `;
-                    }
-                    
-                    // 3D 시각화가 생성되었다면 표시
-                    if (data.htmlFilePath) {
-                        resultHTML += `
-                            <div style="margin-top: 20px;">
-                                <h3 style="margin-bottom: 10px; font-size: 16px; color: var(--text-primary);">🔍 3D 공간 시각화 (가까울수록 유사도 높음)</h3>
-                                <iframe src="${data.htmlFilePath}" style="width: 100%; height: 800px; border: 2px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md);"></iframe>
-                            </div>
-                        `;
-                    }
-                    
-                    aiSearchResults.innerHTML = resultHTML;
-                    
-                    // 검색 기록 새로고침
-                    loadSearchHistory();
+                    setTimeout(async () => {
+                        closeProgressModal();
+                        
+                        // AI 검색 기록 리스트와 동일한 디자인으로 표시
+                        const now = new Date().toLocaleString('ko-KR');
+                        
+                        // 순위 정보 추출
+                        let rankingInfo = '';
+                        if (data.rankingResult) {
+                            try {
+                                const rankingList = typeof data.rankingResult === 'string' ? JSON.parse(data.rankingResult) : data.rankingResult;
+                                if (Array.isArray(rankingList) && rankingList.length > 0) {
+                                    const top3 = rankingList.slice(0, 3);
+                                    const medals = ['🥇', '🥈', '🥉'];
+                                    rankingInfo = top3.map((rank, idx) => {
+                                        const medal = medals[idx] || '🏅';
+                                        return `${medal} ${(rank.file_name || '').replace(/'/g, '')} (${rank.relevance || 0}%)`;
+                                    }).join(', ');
+                                }
+                            } catch (e) {
+                                console.error('순위 정보 추출 실패:', e);
+                            }
+                        }
+                        
+                        // 간단한 리스트 형태로 표시
+                        const queryEscaped = query.replace(/'/g, "\\'");
+                        const aiAnswerEscaped = (data.aiAnswer || '').replace(/'/g, "\\'");
+                        const htmlFilePath = data.htmlFilePath || '';
+                        const barChartPath = data.barChartPath || '';
+                        const chromaPath = data.chromaPath || '';
+                        const rankingResultRaw = typeof data.rankingResult === 'string' ? data.rankingResult : JSON.stringify(data.rankingResult || '');
+                        const rankingResultEscaped = rankingResultRaw.replace(/'/g, "\\'");
+                        
+                        // aiSearchResults에 추가하지 않고, 검색 기록만 새로고침
+                        
+                        // 검색 기록 섹션으로 스크롤
+                        searchHistory.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        
+                        // 검색 기록 새로고침
+                        await loadSearchHistory();
+                        
+                        // 2초 후에 첫 번째 file-item 클릭
+                        setTimeout(() => {
+                            const fileItems = searchHistory.querySelectorAll('.file-item');
+                            if (fileItems.length > 0) {
+                                // 첫 번째 file-item 내부의 클릭 가능한 요소를 찾아서 클릭
+                                const firstItem = fileItems[0];
+                                const clickableElement = firstItem.querySelector('[onclick]');
+                                if (clickableElement) {
+                                    clickableElement.click();
+                                }
+                            }
+                        }, 100);
+                        
+                        aiSearchBtn.disabled = false;
+                    }, 1000);
                 } else {
+                    closeProgressModal();
                     aiSearchResults.innerHTML = `
                         <div class="error" style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">
                             ❌ 검색 중 오류가 발생했습니다: ${data.message}
                         </div>
                     `;
+                    aiSearchBtn.disabled = false;
                 }
             } catch (error) {
-                aiSearchResults.innerHTML = `
-                    <div class="error" style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">
-                        ❌ 서버 오류: ${error.message}
-                    </div>
-                `;
-            } finally {
+                console.error('AI 검색 오류:', error);
+                closeProgressModal();
+                
+                // Ollama 연결 오류인지 확인
+                if (error.message && error.message.includes('ECONNREFUSED')) {
+                    aiSearchResults.innerHTML = `
+                        <div class="error" style="padding: 30px; border-radius: 12px; background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); color: #856404; border-left: 5px solid #ffc107; text-align: center; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);">
+                            <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 15px; color: #856404;">
+                                Ollama 서버가 꺼져 있습니다
+                            </div>
+                            <div style="font-size: 17px; margin-bottom: 20px; color: #856404;">
+                                Ollama 서버에 연결할 수 없습니다.
+                            </div>
+                            <div style="font-size: 15px; color: #856404; opacity: 0.9; line-height: 1.8;">
+                                <strong>다음 명령어로 Ollama 서버를 실행하세요:</strong><br>
+                                <code style="background: rgba(0,0,0,0.1); padding: 10px 16px; border-radius: 6px; font-family: 'Courier New', monospace; display: inline-block; margin-top: 12px; font-size: 16px; color: #856404;">ollama serve</code>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    aiSearchResults.innerHTML = `
+                        <div class="error" style="padding: 15px; border-radius: 6px; background: linear-gradient(135deg, #f8e0e0 0%, #f5c8c8 100%); color: #842029; border-left: 3px solid #dc3545;">
+                            ❌ AI 검색 중 오류가 발생했습니다: ${error.message}<br>
+                            <small style="color: #842029; opacity: 0.8;">브라우저 콘솔을 확인하여 자세한 정보를 확인하세요.</small>
+                        </div>
+                    `;
+                }
                 aiSearchBtn.disabled = false;
             }
         });
@@ -369,7 +576,189 @@
             // 검색 기록 섹션으로 스크롤
             searchHistory.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        
+        // AI 검색 결과 확장 함수
+        function expandSearchResult(query, aiAnswer, htmlFilePath, barChartPath, chromaPath, rankingResult) {
+            let resultHTML = `
+                <div style="padding: 24px; background: var(--bg-primary); border-radius: 8px; margin-top: 15px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">🔍 검색 내용</h3>
+                    <div style="padding: 15px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 20px; font-size: 18px;">
+                        ${query}
+                    </div>
+            `;
+            
+            // ChromaDB 경로 표시
+            if (chromaPath) {
+                resultHTML += `
+                    <div style="margin-top: 10px; margin-bottom: 20px;">
+                        <div style="font-size: 15px; color: var(--text-muted);">
+                            💾 사용된 벡터 DB: ${chromaPath}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // AI 답변 표시
+            if (aiAnswer) {
+                resultHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
+                        <div class="file-item" style="margin-bottom: 10px;">
+                            <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${aiAnswer}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 검색된 문서 목록 표시
+            if (rankingResult) {
+                try {
+                    const rankingList = typeof rankingResult === 'string' ? JSON.parse(rankingResult) : rankingResult;
+                    
+                    if (Array.isArray(rankingList) && rankingList.length > 0) {
+                        resultHTML += `
+                            <div style="margin-top: 20px;">
+                                <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 순위</h3>
+                                <div style="background: var(--bg-secondary); border-radius: 8px; overflow: hidden;">
+                        `;
+                        
+                        rankingList.forEach((item, index) => {
+                            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '💫';
+                            resultHTML += `
+                                <div style="padding: 18px; border-bottom: 1px solid var(--border-color); display: flex; align-items: flex-start; gap: 15px; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 8px;">
+                                    <div style="font-size: 32px; flex-shrink: 0; padding-top: 4px;">${medal}</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 8px; font-size: 18px;">
+                                            📄 ${item.file_name || ''}
+                                        </div>
+                                        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px;">
+                                            ${item.file_location ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                                📁 ${item.file_location}
+                                            </div>` : ''}
+                                            <div style="font-size: 14px; color: white; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; font-weight: 600;">
+                                                ⭐ ${item.relevance}%
+                                            </div>
+                                            ${item.keywords ? `<div style="font-size: 14px; color: var(--primary-color); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                                🔑 ${item.keywords}
+                                            </div>` : ''}
+                                        </div>
+                                        ${item.summary ? `<div style="font-size: 15px; color: var(--text-secondary); line-height: 1.8; white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; margin-bottom: 10px; padding: 12px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                                            <div style="font-weight: 600; margin-bottom: 6px; color: var(--primary-color); font-size: 16px;">📋 요약:</div>
+                                            <div style="color: var(--text-primary); font-size: 16px;">${item.summary}</div>
+                                        </div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        resultHTML += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    console.error('순위 리스트 파싱 오류:', e);
+                }
+            }
+            
+            // Bar Chart 표시
+            if (barChartPath) {
+                resultHTML += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">📊 검색 결과 관련성</h3>
+                        <iframe src="/${barChartPath}" style="width: 100%; height: 400px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
+                    </div>
+                `;
+            }
+            
+            // 3D 시각화 표시
+            if (htmlFilePath) {
+                resultHTML += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">🔍 3D 공간 시각화</h3>
+                        <iframe src="/${htmlFilePath}" style="width: 100%; height: 700px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
+                    </div>
+                `;
+            }
+            
+            resultHTML += `</div>`;
+            
+            aiSearchResults.innerHTML += resultHTML;
+            
+            // 결과 섹션으로 스크롤
+            aiSearchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
+        // AI 검색 결과 상세 보기 (간단 버전)
+        function viewSearchResultInDetail(query, output, htmlFilePath, barChartPath) {
+            // HTML 이스케이프 함수
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+            
+            const safeQuery = escapeHtml(query);
+            const safeOutput = escapeHtml(output);
+            const safeHtmlPath = escapeHtml(htmlFilePath);
+            const safeBarPath = escapeHtml(barChartPath);
+            
+            let resultHTML = `
+                <div style="padding: 24px; background: var(--bg-primary); border-radius: 8px; margin-top: 15px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">🔍 검색 내용</h3>
+                    <div style="padding: 15px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 20px; font-size: 18px;">
+                        ${safeQuery}
+                    </div>
+            `;
+            
+            // AI 답변 표시
+            if (output) {
+                resultHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
+                        <div class="file-item" style="margin-bottom: 10px;">
+                            <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${safeOutput}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Bar Chart가 생성되었다면 표시
+            if (barChartPath) {
+                resultHTML += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">📊 검색 결과 관련성</h3>
+                        <iframe src="${safeBarPath}" style="width: 100%; height: 400px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
+                    </div>
+                `;
+            }
+            
+            // 3D 시각화 표시
+            if (htmlFilePath) {
+                resultHTML += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 20px; margin-bottom: 15px; color: var(--text-primary);">🔍 3D 공간 시각화</h3>
+                        <iframe src="${safeHtmlPath}" style="width: 100%; height: 700px; border: 2px solid var(--border-color); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></iframe>
+                    </div>
+                `;
+            }
+            
+            resultHTML += `</div>`;
+            
+            aiSearchResults.innerHTML = resultHTML;
+            
+            // 결과 섹션으로 스크롤
+            aiSearchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
         // 검색 기록 상세 보기
         async function viewSearchHistory(id, htmlFilePath, barChartPath, query) {
             // 검색 결과 및 AI 답변 가져오기
@@ -436,8 +825,10 @@
                 resultHTML += `
                     <div style="margin-bottom: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
-                        <div style="padding: 24px; background: linear-gradient(135deg, #f8f9ff 0%, #e8ecfd 100%); border-radius: 8px; border-left: 4px solid var(--primary-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);">
-                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; font-size: 17px; line-height: 1.8;">${aiAnswer}</pre>
+                        <div class="file-item" style="margin-bottom: 10px;">
+                            <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${aiAnswer}</div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -614,10 +1005,62 @@
             }
         }
 
+        // 진행 상황 모달 표시
+        function showProgressModal(title = 'AI 검색') {
+            const modal = document.getElementById('progressModal');
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.textContent = title;
+            modal.style.display = 'flex';
+        }
+
+        // 진행 상황 업데이트
+        function updateProgress(percentage, status = '', isError = false) {
+            const progressBar = document.getElementById('progressBar');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressStatus = document.getElementById('progressStatus');
+            
+            // 0-100 사이로 제한
+            percentage = Math.max(0, Math.min(100, percentage));
+            
+            progressBar.style.width = percentage + '%';
+            progressPercentage.textContent = percentage + '%';
+            
+            // 오류 상태인 경우 빨간색으로 변경
+            if (isError) {
+                progressBar.style.background = 'linear-gradient(90deg, #dc3545 0%, #c82333 50%, #bd2130 100%)';
+                progressBar.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.5)';
+            } else {
+                progressBar.style.background = 'linear-gradient(90deg, #ffd700 0%, #ffed4e 50%, #ffff00 100%)';
+                progressBar.style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.5)';
+            }
+            
+            if (status) {
+                progressStatus.textContent = status;
+            }
+        }
+
+        // 진행 상황 모달 닫기
+        function closeProgressModal() {
+            const modal = document.getElementById('progressModal');
+            modal.style.display = 'none';
+            
+            // 리셋 (색상도 리셋)
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.background = 'linear-gradient(90deg, #ffd700 0%, #ffed4e 50%, #ffff00 100%)';
+            progressBar.style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.5)';
+            
+            // 제목 스타일 리셋
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.style.color = 'white';
+            
+            updateProgress(0, '초기화 중...');
+        }
+
         // 페이지 로드 시 파일 목록 및 검색 기록 표시
         loadAllFiles();
         loadSearchHistory();
     </script>
 </body>
 </html>
+
 

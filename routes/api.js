@@ -2,19 +2,49 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const { exec } = require('child_process');
 const { query } = require('../db');
 
 // ollama 서버 체크 함수
-function checkOllamaServer() {
+async function checkOllamaServer() {
   return new Promise((resolve) => {
-    exec('ps aux | grep ollama | grep -v grep', (error, stdout, stderr) => {
-      if (error || !stdout || stdout.trim().length === 0) {
-        resolve(false); // ollama 서버가 실행 중이 아님
+    console.log('🔍 Ollama 서버 상태 확인 중...');
+    
+    // ollama 서버가 실제로 작동하는지 HTTP 요청으로 확인
+    const options = {
+      hostname: 'localhost',
+      port: 11434,
+      path: '/api/tags',
+      method: 'GET',
+      timeout: 2000
+    };
+    
+    const req = http.request(options, (res) => {
+      // 응답이 있으면 ollama 서버가 실행 중
+      if (res.statusCode === 200) {
+        console.log('✅ Ollama 서버가 정상적으로 실행 중입니다.');
+        resolve(true);
       } else {
-        resolve(true); // ollama 서버가 실행 중
+        console.log('❌ Ollama 서버 응답 상태:', res.statusCode);
+        resolve(false);
       }
     });
+    
+    req.on('error', (error) => {
+      // 오류 발생 시 ollama 서버가 꺼져있음
+      console.log('❌ Ollama 서버 연결 실패:', error.message);
+      resolve(false);
+    });
+    
+    req.on('timeout', () => {
+      // 타임아웃 발생 시 ollama 서버가 꺼져있음
+      console.log('❌ Ollama 서버 응답 시간 초과');
+      req.destroy();
+      resolve(false);
+    });
+    
+    req.end();
   });
 }
 
@@ -319,7 +349,7 @@ router.delete('/delete-vectorstore/:id', async (req, res) => {
 });
 
 // AI 검색 API (conda 환경 사용)
-router.post('/ai-search', express.json(), (req, res) => {
+router.post('/ai-search', express.json(), async (req, res) => {
   console.log('📬 AI 검색 API 호출됨');
   console.log('Request body:', req.body);
   
@@ -332,6 +362,23 @@ router.post('/ai-search', express.json(), (req, res) => {
       message: '검색 쿼리가 제공되지 않았습니다.' 
     });
   }
+  
+  // ollama 서버 체크
+  console.log('🔍 Ollama 서버 상태 확인 중...');
+  const isOllamaRunning = await checkOllamaServer();
+  
+  if (!isOllamaRunning) {
+    console.log('❌ AI 검색 실패: Ollama 서버가 꺼져 있습니다.');
+    console.log('📝 사용자에게 Ollama 서버를 실행하도록 안내합니다.');
+    return res.status(500).json({ 
+      success: false,
+      message: 'Ollama 서버가 꺼져 있습니다. Ollama 서버를 실행한 후 다시 시도해주세요.',
+      ollamaError: true,
+      details: 'AI 검색 기능을 사용하려면 Ollama 서버가 실행 중이어야 합니다. 터미널에서 명령어를 실행하세요.'
+    });
+  }
+  
+  console.log('✅ Ollama 서버 정상 확인, AI 검색을 시작합니다.');
   
   const pythonScript = path.join(__dirname, '..', 'python', 'rag', '3d_file_search.py');
   
@@ -366,16 +413,55 @@ router.post('/ai-search', express.json(), (req, res) => {
     const barChartPathMatch = stdout.match(/\[BAR_CHART_PATH\]([^\[]+)\[\/BAR_CHART_PATH\]/);
     const barChartPath = barChartPathMatch ? barChartPathMatch[1] : null;
     
-    // RAG 검색 결과 추출 (===== 사이의 내용)
-    const resultMatch = stdout.match(/={50}\n📊 RAG 처리 완료! 최종 결과:\n={50}\n([\s\S]*?)\n={50}/);
-    const resultText = resultMatch ? resultMatch[1].trim() : stdout;
+    // Python 실행 완료 후 DB에서 최신 검색 기록 가져오기
+    const getLatestSearchHistory = async () => {
+      try {
+        const sql = 'SELECT search_result, ai_answer, ranking_result, html_file_path, bar_chart_path, chroma_path FROM search_history WHERE query = ? ORDER BY created_at DESC LIMIT 1';
+        const results = await query(sql, [query]);
+        
+        if (results && results.length > 0) {
+          return {
+            searchResult: results[0].search_result || '',
+            aiAnswer: results[0].ai_answer || '',
+            rankingResult: results[0].ranking_result || null,
+            htmlFilePath: results[0].html_file_path || htmlFilePath,
+            barChartPath: results[0].bar_chart_path || barChartPath,
+            chromaPath: results[0].chroma_path || ''
+          };
+        }
+        
+        return {
+          searchResult: stdout,
+          aiAnswer: stdout,
+          rankingResult: null,
+          htmlFilePath: htmlFilePath,
+          barChartPath: barChartPath,
+          chromaPath: ''
+        };
+      } catch (error) {
+        console.error('검색 기록 가져오기 오류:', error);
+        return {
+          searchResult: stdout,
+          aiAnswer: stdout,
+          rankingResult: null,
+          htmlFilePath: htmlFilePath,
+          barChartPath: barChartPath,
+          chromaPath: ''
+        };
+      }
+    };
     
-    res.json({
-      success: true,
-      message: 'AI 검색이 완료되었습니다.',
-      output: resultText,
-      htmlFilePath: htmlFilePath,
-      barChartPath: barChartPath
+    getLatestSearchHistory().then(dbData => {
+      res.json({
+        success: true,
+        message: 'AI 검색이 완료되었습니다.',
+        searchResult: dbData.searchResult,
+        aiAnswer: dbData.aiAnswer,
+        rankingResult: dbData.rankingResult,
+        htmlFilePath: dbData.htmlFilePath,
+        barChartPath: dbData.barChartPath,
+        chromaPath: dbData.chromaPath
+      });
     });
   });
 });
