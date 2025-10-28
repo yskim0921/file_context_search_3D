@@ -32,11 +32,11 @@
             <h2>폴더를 선택해서 업로드하세요</h2>
             <form id="folderUploadForm" enctype="multipart/form-data">
                 <div class="file-input-wrapper">
-                    <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*" style="display: none;">
+                    <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*">
                     <label for="folderInput" class="file-label">📂 폴더 선택</label>
                 </div>
                 <div id="message" class="message"></div>
-                <button type="submit" id="uploadButton" class="upload-btn" style="margin-top: 16px; display: none;">📤 폴더 업로드</button>
+                <button type="submit" id="uploadButton" class="upload-btn" style="display: none;">📤 폴더 업로드</button>
             </form>
         </div>
         
@@ -125,6 +125,47 @@
         let currentPage = 1;
         const itemsPerPage = 10;
         let currentFiles = [];  // 현재 페이지에 표시된 파일들
+        
+        // 버튼 활성화/비활성화 함수
+        function disableAllButtons() {
+            // 네비게이션 링크 비활성화
+            document.querySelectorAll('.upload-link, .folder-link, .vector-link, .search-link').forEach(link => {
+                link.style.pointerEvents = 'none';
+                link.style.opacity = '0.5';
+            });
+            // 검색 버튼 비활성화
+            if (fileSearchBtn) fileSearchBtn.disabled = true;
+            if (fileSearchReset) fileSearchReset.disabled = true;
+            // 업로드 버튼 비활성화
+            if (document.getElementById('uploadButton')) document.getElementById('uploadButton').disabled = true;
+            // 폴더 선택 라벨 비활성화
+            if (document.querySelector('label[for="folderInput"]')) {
+                document.querySelector('label[for="folderInput"]').style.pointerEvents = 'none';
+                document.querySelector('label[for="folderInput"]').style.opacity = '0.5';
+            }
+            // 전체 삭제 버튼 비활성화
+            if (document.getElementById('deleteAllBtn')) document.getElementById('deleteAllBtn').disabled = true;
+        }
+
+        function enableAllButtons() {
+            // 네비게이션 링크 활성화
+            document.querySelectorAll('.upload-link, .folder-link, .vector-link, .search-link').forEach(link => {
+                link.style.pointerEvents = 'auto';
+                link.style.opacity = '1';
+            });
+            // 검색 버튼 활성화
+            if (fileSearchBtn) fileSearchBtn.disabled = false;
+            if (fileSearchReset) fileSearchReset.disabled = false;
+            // 업로드 버튼 활성화
+            if (document.getElementById('uploadButton')) document.getElementById('uploadButton').disabled = false;
+            // 폴더 선택 라벨 활성화
+            if (document.querySelector('label[for="folderInput"]')) {
+                document.querySelector('label[for="folderInput"]').style.pointerEvents = 'auto';
+                document.querySelector('label[for="folderInput"]').style.opacity = '1';
+            }
+            // 전체 삭제 버튼 활성화
+            if (document.getElementById('deleteAllBtn')) document.getElementById('deleteAllBtn').disabled = false;
+        }
 
         // 모달 팝업 제어 함수
         function showModal(title, messageText, showSpinner = true, showFooter = false, showProgress = false) {
@@ -142,10 +183,14 @@
             }
             modalFooter.style.display = showFooter ? 'block' : 'none';
             uploadModal.style.display = 'flex';
+            // 모든 버튼 비활성화
+            disableAllButtons();
         }
 
         function closeModal() {
             uploadModal.style.display = 'none';
+            // 모든 버튼 활성화
+            enableAllButtons();
         }
 
         // 진행 바 업데이트 함수
@@ -157,10 +202,13 @@
             }
         }
 
-        // 모달 외부 클릭 시 닫기
+        // 모달 외부 클릭 시 닫기 (처리 중일 때는 닫히지 않음)
         uploadModal.addEventListener('click', (e) => {
             if (e.target === uploadModal) {
-                closeModal();
+                // footer가 표시되어 있을 때만 닫기 가능 (처리 완료 상태)
+                if (modalFooter.style.display === 'block') {
+                    closeModal();
+                }
             }
         });
 
@@ -168,7 +216,6 @@
         function displayFileListFromFiles(files) {
             try {
                 if (!files || files.length === 0) {
-                    console.log('❌ 표시할 파일이 없습니다.');
                     message.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">❌ 표시할 파일이 없습니다.</div>';
                     return;
                 }
@@ -266,7 +313,7 @@
         folderInput.addEventListener('change', function() {
             const files = this.files;
             if (files.length > 0) {
-                // 즉시 파일 리스트 표시 (alert 없이)
+                // 즉시 파일 리스트 표시
                 displayFileListFromFiles(files);
                 
                 // 폴더 선택 후 업로드 버튼 표시
@@ -345,9 +392,6 @@
                                     }
                                 }
                                 
-                                console.log('📁 업로드된 폴더 경로:', uploadDir);
-                                console.log('📄 업로드된 파일 수:', data.files ? data.files.length : 0);
-                                
                                 // 1초 후 자동으로 Python 스크립트 실행
                                 setTimeout(async () => {
                                     // 파일내용 정리하여 MySQL DB에 입력 중 - 모달 업데이트
@@ -362,10 +406,7 @@
                                             body: JSON.stringify({ folderPath: uploadDir })
                                         });
                                         
-                                        console.log('Python 응답:', pythonResponse);
-                                        
                                         const pythonData = await pythonResponse.json();
-                                        console.log('Python 처리 결과:', pythonData);
                                         
                                         if (pythonData.success) {
                                             // 처리 완료 - 100%

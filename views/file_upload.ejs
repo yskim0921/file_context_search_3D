@@ -120,6 +120,47 @@
         const searchResults = document.getElementById('searchResults');
         let allFiles = [];
 
+        // 버튼 활성화/비활성화 함수
+        function disableAllButtons() {
+            // 네비게이션 링크 비활성화
+            document.querySelectorAll('.upload-link, .folder-link, .vector-link, .search-link').forEach(link => {
+                link.style.pointerEvents = 'none';
+                link.style.opacity = '0.5';
+            });
+            // 검색 버튼 비활성화
+            if (fileSearchBtn) fileSearchBtn.disabled = true;
+            if (fileSearchReset) fileSearchReset.disabled = true;
+            // 업로드 버튼 비활성화
+            if (document.getElementById('uploadButton')) document.getElementById('uploadButton').disabled = true;
+            // 파일 선택 라벨 비활성화
+            if (document.querySelector('label[for="fileInput"]')) {
+                document.querySelector('label[for="fileInput"]').style.pointerEvents = 'none';
+                document.querySelector('label[for="fileInput"]').style.opacity = '0.5';
+            }
+            // 전체 삭제 버튼 비활성화
+            if (document.getElementById('deleteAllBtn')) document.getElementById('deleteAllBtn').disabled = true;
+        }
+
+        function enableAllButtons() {
+            // 네비게이션 링크 활성화
+            document.querySelectorAll('.upload-link, .folder-link, .vector-link, .search-link').forEach(link => {
+                link.style.pointerEvents = 'auto';
+                link.style.opacity = '1';
+            });
+            // 검색 버튼 활성화
+            if (fileSearchBtn) fileSearchBtn.disabled = false;
+            if (fileSearchReset) fileSearchReset.disabled = false;
+            // 업로드 버튼 활성화
+            if (document.getElementById('uploadButton')) document.getElementById('uploadButton').disabled = false;
+            // 파일 선택 라벨 활성화
+            if (document.querySelector('label[for="fileInput"]')) {
+                document.querySelector('label[for="fileInput"]').style.pointerEvents = 'auto';
+                document.querySelector('label[for="fileInput"]').style.opacity = '1';
+            }
+            // 전체 삭제 버튼 활성화
+            if (document.getElementById('deleteAllBtn')) document.getElementById('deleteAllBtn').disabled = false;
+        }
+
         // 모달 팝업 제어 함수
         function showModal(title, messageText, showSpinner = true, showFooter = false) {
             modalTitle.textContent = title;
@@ -131,16 +172,23 @@
             }
             modalFooter.style.display = showFooter ? 'block' : 'none';
             uploadModal.style.display = 'flex';
+            // 모든 버튼 비활성화
+            disableAllButtons();
         }
 
         function closeModal() {
             uploadModal.style.display = 'none';
+            // 모든 버튼 활성화
+            enableAllButtons();
         }
 
-        // 모달 외부 클릭 시 닫기
+        // 모달 외부 클릭 시 닫기 (처리 중일 때는 닫히지 않음)
         uploadModal.addEventListener('click', (e) => {
             if (e.target === uploadModal) {
-                closeModal();
+                // footer가 표시되어 있을 때만 닫기 가능 (처리 완료 상태)
+                if (modalFooter.style.display === 'block') {
+                    closeModal();
+                }
             }
         });
 
