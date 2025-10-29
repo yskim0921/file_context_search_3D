@@ -1,30 +1,62 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>파일 관리 프로그램</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/file_rag.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파일 관리 프로그램</title>
+  <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
-    <div class="page-wrapper">
-        <div class="page-header">
-            <div class="title-container">
-                <h1>파일관리프로그램입니다.</h1>
-                <a href="#" onclick="history.back(); return false;" class="back-link-small">이전으로 돌아가기</a>
-            </div>
-        </div>
-        
-        <div class="content-card">
-            <h2>기능 선택</h2>
-            <div class="button-container">
-                <a href="/file_upload" class="upload-link">파일업로드</a>
-                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
-                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
-                <a href="/file_search" class="search-link">문서내용 검색파일</a>
-            </div>
-        </div>
+  <!-- 상단 헤더 -->
+  <div class="top-header">
+    <h1>📁 파일 관리 프로그램</h1>
+    <div class="top-header-nav">
+      <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
     </div>
+  </div>
+
+  <div class="container">
+    <!-- 사이드바 -->
+    <div class="sidebar">
+      <div>
+        <h2>파일 관리</h2>
+        <p>File Manager</p>
+        <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
+        <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
+        <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
+        <button class="btn" onclick="window.location.href='/file_search'">📚 문서내용 검색</button>
+      </div>
+      <div>
+        <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
+      </div>
+    </div>
+
+    <!-- 메인 -->
+    <div class="main">
+      <div class="summary">
+        <h2>기능 선택</h2>
+        <div class="summary-box" style="padding: 20px;">
+          <div class="function-grid">
+            <a href="/file_upload" class="function-card">
+              <h3>📄 파일업로드</h3>
+              <p>PDF, TXT, DOCX 파일을 업로드합니다</p>
+            </a>
+            <a href="/folder_upload" class="function-card">
+              <h3>📁 폴더 업로드</h3>
+              <p>여러 파일을 포함한 폴더를 업로드합니다</p>
+            </a>
+            <a href="/vectorstore" class="function-card">
+              <h3>🔍 벡터스토어 만들기</h3>
+              <p>업로드된 파일로 벡터스토어를 생성합니다</p>
+            </a>
+            <a href="/file_search" class="function-card">
+              <h3>📚 문서내용 검색</h3>
+              <p>AI를 활용하여 문서를 검색합니다</p>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

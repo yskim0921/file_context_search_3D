@@ -4,69 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>벡터스토어 만들기</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/file_upload.css">
-    <link rel="stylesheet" href="/css/file_rag.css">
-    <link rel="stylesheet" href="/css/vectorstore.css">
+    <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
-    <div class="page-wrapper">
-        <div class="page-header">
-            <div class="title-container">
-                <h1>벡터스토어 만들기</h1>
-                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
-            </div>
+    <!-- 상단 헤더 -->
+    <div class="top-header">
+        <h1>🔍 벡터스토어 만들기</h1>
+        <div class="top-header-nav">
+            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
+            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
         </div>
-        
-        <!-- 기능 선택 네비게이션 -->
-        <div class="content-card">
-            <h2>기능 선택</h2>
-            <div class="button-container">
-                <a href="/file_upload" class="upload-link">파일업로드</a>
-                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
-                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
-                <a href="/file_search" class="search-link">문서내용 검색파일</a>
+    </div>
+
+    <div class="container">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div>
+                <h2>파일 관리</h2>
+                <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
+                <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
+                <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
+                <button class="btn" onclick="window.location.href='/file_search'">📚 문서내용 검색</button>
             </div>
-        </div>
-        
-        <div class="content-card">
-            <h2>DB에 저장된 내용 벡토스토어 생성</h2>
-            <button id="createVectorStoreBtn" class="upload-btn" style="margin-top: 20px;">벡터 스토어 생성</button>
-            <div id="resultMessage" style="margin-top: 20px;"></div>
+            <div>
+                <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
+            </div>
         </div>
 
-        <div class="content-card">
-            <h2>벡터스토어에서 검색</h2>
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="searchInput" placeholder="검색하고 싶은 내용을 입력하세요..." style="flex: 1; padding: 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;">
-                    <button id="searchBtn" class="upload-btn" style="padding: 14px 32px; margin: 0; font-size: 16px; font-weight: 600;">🔍 검색</button>
+        <!-- 메인 -->
+        <div class="main">
+            <div class="summary">
+                <h2>🔍 벡터스토어 만들기</h2>
+                
+                <!-- 벡터스토어 생성 섹션 -->
+                <div class="summary-box">
+                    <h3>DB에 저장된 내용 벡터스토어 생성:</h3>
+                    <button id="createVectorStoreBtn" class="btn" style="margin-top: 15px;">벡터 스토어 생성</button>
+                    <div id="resultMessage" style="margin-top: 15px;"></div>
                 </div>
-            </div>
-            <div id="searchResults" style="margin-top: 20px;">
-                <p style="text-align: center; color: var(--text-muted);">검색 결과가 여기에 표시됩니다.</p>
-            </div>
-        </div>
 
-        <div class="content-card">
-            <h2>생성된 벡터스토어 목록</h2>
-            <div id="vectorstoreList" class="vectorstore-list">
-                <table class="vectorstore-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 150px;">순번</th>
-                            <th>폴더명</th>
-                            <th>문서수량</th>
-                            <th>생성날짜</th>
-                            <th>상태</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vectorstoreTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- 벡터스토어 검색 섹션 -->
+                <div class="summary-box">
+                    <h3>벡터스토어에서 검색:</h3>
+                    <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
+                        <input type="text" id="searchInput" placeholder="검색하고 싶은 내용을 입력하세요..." class="search-input">
+                        <button id="searchBtn" class="btn" style="padding: 14px 32px; font-size: 16px; font-weight: 600;">🔍 검색</button>
+                    </div>
+                    <div id="searchResults" style="margin-top: 15px;">
+                        <p style="text-align: center; color: #666;">검색 결과가 여기에 표시됩니다.</p>
+                    </div>
+                </div>
+
+                <!-- 생성된 벡터스토어 목록 -->
+                <div class="summary-box">
+                    <h3>생성된 벡터스토어 목록:</h3>
+                    <div id="vectorstoreList" class="file-list" style="margin-top: 15px;">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 150px;">순번</th>
+                                    <th>폴더명</th>
+                                    <th>문서수량</th>
+                                    <th>생성날짜</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vectorstoreTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #666; padding: 15px;">불러오는 중...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -125,7 +136,7 @@
                         
                         return `
                         <tr data-index="${index}" data-folder-id="${folder.id}">
-                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${displayId}</td>
+                            <td style="text-align: center; font-weight: 600; color: #6a4c93;">${displayId}</td>
                             <td>${folder.name}</td>
                             <td>${folder.fileCount}개</td>
                             <td>${folder.date}</td>
@@ -158,7 +169,7 @@
                         firstRow.classList.add('selected');
                     }
                 } else {
-                    vectorstoreTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">생성된 벡터스토어가 없습니다.</td></tr>';
+                    vectorstoreTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">생성된 벡터스토어가 없습니다.</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading vectorstore list:', error);
@@ -352,7 +363,7 @@
             }
 
             searchBtn.disabled = true;
-            searchResults.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="margin-top: 10px; color: var(--text-muted);">검색 중...</p></div>';
+            searchResults.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #6a4c93; border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="margin-top: 10px; color: #666;">검색 중...</p></div>';
 
             try {
                 const response = await fetch('/api/search-vectorstore', {
@@ -384,12 +395,12 @@
                         const medal = item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : '🏅';
                         const relevanceColor = item.relevance >= 80 ? '#10b981' : item.relevance >= 50 ? '#f59e0b' : '#ef4444';
                         resultsHTML += `
-                            <div style="margin-bottom: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                            <div style="margin-bottom: 20px; padding: 20px; background: #ffffffcc; border-radius: 8px; border-left: 4px solid #6a4c93;">
                                 <div style="display: flex; align-items: flex-start; gap: 15px;">
                                     <div style="font-size: 36px; flex-shrink: 0;">${medal}</div>
                                     <div style="flex: 1;">
                                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                                            <div style="font-size: 18px; font-weight: 600; color: var(--primary-color);">
+                                            <div style="font-size: 18px; font-weight: 600; color: #6a4c93;">
                                                 ${item.rank}순위 - ${item.file_name}
                                             </div>
                                             <div style="padding: 6px 16px; background: ${relevanceColor}; color: white; border-radius: 20px; font-weight: 700; font-size: 16px; box-shadow: 0 2px 8px ${relevanceColor}66;">
@@ -397,23 +408,23 @@
                                             </div>
                                         </div>
                                         <div style="margin-bottom: 10px;">
-                                            <span style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">📁 ${item.file_location}</span>
+                                            <span style="font-size: 14px; color: #666; padding: 6px 12px; background: rgba(106, 76, 147, 0.1); border-radius: 4px;">📁 ${item.file_location}</span>
                                         </div>
                                         <div style="margin-bottom: 10px;">
-                                            <strong style="color: var(--text-primary);">📝 요약:</strong>
-                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px;">
+                                            <strong style="color: #333;">📝 요약:</strong>
+                                            <div style="padding: 12px; background: rgba(106, 76, 147, 0.05); border-radius: 6px; margin-top: 6px;">
                                                 ${item.summary}
                                             </div>
                                         </div>
                                         <div style="margin-bottom: 10px;">
-                                            <strong style="color: var(--text-primary);">🗝️ 키워드:</strong>
-                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px;">
+                                            <strong style="color: #333;">🗝️ 키워드:</strong>
+                                            <div style="padding: 12px; background: rgba(106, 76, 147, 0.05); border-radius: 6px; margin-top: 6px;">
                                                 ${item.keywords}
                                             </div>
                                         </div>
                                         <div>
-                                            <strong style="color: var(--text-primary);">📄 내용 미리보기:</strong>
-                                            <div style="padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; margin-top: 6px; white-space: pre-wrap; word-break: break-word;">
+                                            <strong style="color: #333;">📄 내용 미리보기:</strong>
+                                            <div style="padding: 12px; background: rgba(106, 76, 147, 0.05); border-radius: 6px; margin-top: 6px; white-space: pre-wrap; word-break: break-word;">
                                                 ${item.content_preview}
                                             </div>
                                         </div>

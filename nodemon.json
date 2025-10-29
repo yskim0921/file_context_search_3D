@@ -1,0 +1,24 @@
+{
+  "watch": [
+    "routes",
+    "views",
+    "public",
+    "app.js",
+    "server.js",
+    "db.js"
+  ],
+  "ignore": [
+    "node_modules",
+    "python",
+    "*.log",
+    ".git",
+    "public/upload",
+    "python/rag/search",
+    "*.html",
+    "*.pyc",
+    "*.py"
+  ],
+  "ext": "js,json,ejs,css",
+  "delay": 1000
+}
+

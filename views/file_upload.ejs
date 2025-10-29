@@ -4,95 +4,108 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>파일 업로드</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/file_upload.css">
-    <link rel="stylesheet" href="/css/file_rag.css">
+    <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
-    <div class="page-wrapper">
-        <div class="page-header">
-            <div class="title-container">
-                <h1>파일 업로드</h1>
-                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
+    <!-- 상단 헤더 -->
+    <div class="top-header">
+        <h1>📄 파일 업로드</h1>
+        <div class="top-header-nav">
+            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
+            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div>
+                <h2>파일 관리</h2>
+                <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
+                <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
+                <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
+                <button class="btn" onclick="window.location.href='/file_search'">📚 문서내용 검색</button>
+            </div>
+            <div>
+                <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
             </div>
         </div>
-        
-        <!-- 기능 선택 네비게이션 -->
-        <div class="content-card">
-            <h2>기능 선택</h2>
-            <div class="button-container">
-                <a href="/file_upload" class="upload-link">파일업로드</a>
-                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
-                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
-                <a href="/file_search" class="search-link">문서내용 검색파일</a>
-            </div>
-        </div>
-        
-        <div class="content-card">
-            <h2>파일을 선택하여 업로드하세요</h2>
-            <form id="uploadForm" enctype="multipart/form-data">
-                <div class="file-input-wrapper" id="dropZone" style="position: relative;">
-                    <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx,.csv,.html" required>
-                    <label for="fileInput" class="file-label">
-                        <span style="font-size: 48px; margin-bottom: 16px;">📄</span>
-                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
-                            여기를 클릭하거나<br>
-                            파일을 드래그하세요
+
+        <!-- 메인 -->
+        <div class="main">
+            <div class="summary">
+                <h2>📤 파일 업로드</h2>
+                
+                <!-- 파일 업로드 섹션 -->
+                <div class="summary-box">
+                    <h3>파일을 선택하여 업로드하세요:</h3>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="file-input-wrapper" id="dropZone" style="position: relative;">
+                            <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx,.csv,.html" required>
+                            <label for="fileInput" class="file-label">
+                                <span style="font-size: 48px; margin-bottom: 16px;">📄</span>
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                                    여기를 클릭하거나<br>
+                                    파일을 드래그하세요
+                                </div>
+                                <div style="font-size: 14px; color: #666;">
+                                    PDF, DOCX, CSV, TXT, HTML<br>
+                                    파일만 지원합니다
+                                </div>
+                            </label>
+                            <div id="dropOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(106, 76, 147, 0.1); border: 3px dashed #6a4c93; border-radius: 8px; pointer-events: none; z-index: 10;">
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; font-size: 48px;">
+                                    📄
+                                    <div style="margin-top: 16px; font-size: 18px; font-weight: 600; color: #6a4c93;">여기에 놓으세요</div>
+                                </div>
+                            </div>
                         </div>
-                        <div style="font-size: 14px; color: var(--text-muted);">
-                            PDF, DOCX, CSV, TXT, HTML<br>
-                            파일만 지원합니다
-                        </div>
-                    </label>
-                    <div id="dropOverlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(102, 126, 234, 0.1); border: 3px dashed var(--primary-color); border-radius: 8px; pointer-events: none; z-index: 10;">
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; font-size: 48px;">
-                            📄
-                            <div style="margin-top: 16px; font-size: 18px; font-weight: 600; color: var(--primary-color);">여기에 놓으세요</div>
-                        </div>
-                    </div>
+                        <div id="message" class="message"></div>
+                        <button type="submit" id="uploadButton" class="upload-btn" style="display: none; margin-top: 15px;">📤 파일 업로드</button>
+                    </form>
                 </div>
-                <div id="message" class="message"></div>
-                <button type="submit" id="uploadButton" class="upload-btn" style="display: none;">📤 파일 업로드</button>
-            </form>
-        </div>
-        
-        <!-- 파일 검색 섹션 -->
-        <div class="content-card">
-            <h2>파일 찾기</h2>
-            <div class="search-container">
-                <input type="text" id="fileSearchInput" placeholder="파일명을 입력하세요..." class="search-input">
-                <button type="button" id="fileSearchBtn" class="search-btn">찾기</button>
-                <button type="button" id="fileSearchReset" class="search-reset-btn">전체 보기</button>
+                
+                <!-- 파일 검색 섹션 -->
+                <div class="summary-box">
+                    <h3>파일 찾기:</h3>
+                    <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" id="fileSearchInput" placeholder="파일명을 입력하세요..." class="search-input">
+                        <button type="button" id="fileSearchBtn" class="btn" style="padding: 12px 24px;">찾기</button>
+                        <button type="button" id="fileSearchReset" class="btn" style="padding: 12px 24px; background: #999;">전체 보기</button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+                
+                <!-- 업로드된 파일 목록 -->
+                <div class="summary-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">업로드된 파일 목록:</h3>
+                        <button id="deleteAllBtn" onclick="deleteAllFilesOnPage()" class="btn" style="padding: 10px 24px; background: #f5576c; display: none;">
+                            🗑️ 현재 페이지 전체 삭제
+                        </button>
+                    </div>
+                    <div id="fileList" class="file-list">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">순번</th>
+                                    <th>파일명</th>
+                                    <th>크기</th>
+                                    <th>업로드 날짜</th>
+                                    <th>삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fileTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #666; padding: 15px;">불러오는 중...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" style="margin-top: 20px;"></div>
+                </div>
             </div>
-            <div id="searchResults" class="search-results"></div>
-        </div>
-        
-        <div class="content-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0;">업로드된 파일 목록</h2>
-                <button id="deleteAllBtn" onclick="deleteAllFilesOnPage()" style="padding: 10px 24px; background: #f5576c; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: none;">
-                    🗑️ 현재 페이지 전체 삭제
-                </button>
-            </div>
-            <div id="fileList" class="file-list">
-                <table class="file-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">순번</th>
-                            <th>파일명</th>
-                            <th>크기</th>
-                            <th>업로드 날짜</th>
-                            <th>삭제</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fileTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="pagination"></div>
         </div>
     </div>
 

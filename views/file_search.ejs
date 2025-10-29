@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>문서내용 검색파일</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/file_upload.css">
-    <link rel="stylesheet" href="/css/file_rag.css">
+    <link rel="stylesheet" href="/css/home.css">
     <style>
         /* 진행 상황 모달 스타일 */
         .modal-overlay {
@@ -123,50 +121,64 @@
         </div>
     </div>
 
-    <div class="page-wrapper">
-        <div class="page-header">
-            <div class="title-container">
-                <h1>문서내용 검색파일</h1>
-                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
-            </div>
+    <!-- 상단 헤더 -->
+    <div class="top-header">
+        <h1>📚 문서내용 검색</h1>
+        <div class="top-header-nav">
+            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
+            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
         </div>
-        
-        <!-- 기능 선택 네비게이션 -->
-        <div class="content-card">
-            <h2>기능 선택</h2>
-            <div class="button-container">
-                <a href="/file_upload" class="upload-link">파일업로드</a>
-                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
-                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
-                <a href="/file_search" class="search-link">문서내용 검색파일</a>
-            </div>
-        </div>
-        
-        <div class="content-card">
-            <h2>AI로 문서내용 파일 찾기</h2>
-            <div style="margin-bottom: 20px;">
-                <textarea id="aiSearchInput" placeholder="어떤 내용의 문서를 찾고 있나요? 예: '프로젝트 관리 방법에 대한 문서', '보안 정책 관련 문서' 등..." style="width: 100%; min-height: 120px; padding: 16px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
-            </div>
-            <button id="aiSearchBtn" class="upload-btn" style="padding: 14px 32px; font-size: 17px; font-weight: 600; cursor: pointer;">
-                🔍 AI 검색 실행
-            </button>
-            <div id="aiSearchResults" style="margin-top: 20px;"></div>
-        </div>
+    </div>
 
-        <div class="content-card">
-            <h2>AI 검색 기록</h2>
-            <div id="searchHistory" class="file-list" style="min-height: 200px;">
-                <p style="text-align: center; color: var(--text-muted);">불러오는 중...</p>
+    <div class="container">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div>
+                <h2>파일 관리</h2>
+                <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
+                <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
+                <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
+                <button class="btn" onclick="window.location.href='/file_search'">📚 문서내용 검색</button>
+            </div>
+            <div>
+                <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
             </div>
         </div>
 
-        <div class="content-card">
-            <h2>파일명으로 검색</h2>
-            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <input type="text" id="searchInput" placeholder="파일명을 입력하세요..." style="flex: 1; padding: 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;">
-                <button id="searchBtn" class="upload-btn" style="padding: 12px 24px; margin: 0; font-size: 16px; font-weight: 600;">검색</button>
+        <!-- 메인 -->
+        <div class="main">
+            <div class="summary">
+                <!-- AI로 문서내용 파일 찾기 -->
+                <div class="summary-box" style="margin-bottom: 30px;">
+                    <h2>🔍 AI로 문서내용 파일 찾기</h2>
+                    <div style="margin-bottom: 20px; margin-top: 15px;">
+                        <textarea id="aiSearchInput" placeholder="어떤 내용의 문서를 찾고 있나요? 예: '프로젝트 관리 방법에 대한 문서', '보안 정책 관련 문서' 등..." style="width: 100%; min-height: 120px; padding: 16px; border: 2px solid #e3dee9; border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                    </div>
+                    <button id="aiSearchBtn" class="btn" style="padding: 14px 32px; font-size: 17px; font-weight: 600; cursor: pointer;">
+                        🔍 AI 검색 실행
+                    </button>
+                    <div id="aiSearchResults" style="margin-top: 20px;"></div>
+                </div>
+
+                <!-- AI 검색 기록 -->
+                <div class="summary-box" style="margin-bottom: 30px;">
+                    <h2>📋 AI 검색 기록</h2>
+                    <div id="searchHistory" class="file-list" style="min-height: 200px; margin-top: 15px;">
+                        <p style="text-align: center; color: #666;">불러오는 중...</p>
+                    </div>
+                </div>
+
+                <!-- 파일명으로 검색 -->
+                <div class="summary-box">
+                    <h2>📄 파일명으로 검색</h2>
+                    <div style="margin-bottom: 20px; margin-top: 15px; display: flex; gap: 10px;">
+                        <input type="text" id="searchInput" placeholder="파일명을 입력하세요..." style="flex: 1; padding: 14px; border: 2px solid #e3dee9; border-radius: 8px; font-size: 16px;">
+                        <button id="searchBtn" class="btn" style="padding: 12px 24px; margin: 0; font-size: 16px; font-weight: 600;">검색</button>
+                    </div>
+                    <div id="searchResults" class="file-list"></div>
+                </div>
             </div>
-            <div id="searchResults" class="file-list"></div>
         </div>
     </div>
 

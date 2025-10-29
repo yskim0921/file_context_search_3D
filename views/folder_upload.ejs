@@ -4,79 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>폴더 업로드</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/file_upload.css">
-    <link rel="stylesheet" href="/css/file_rag.css">
+    <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
-    <div class="page-wrapper">
-        <div class="page-header">
-            <div class="title-container">
-                <h1>폴더 업로드</h1>
-                <a href="/file_manager" class="back-link-small">파일관리프로그램 바로가기</a>
+    <!-- 상단 헤더 -->
+    <div class="top-header">
+        <h1>📁 폴더 업로드</h1>
+        <div class="top-header-nav">
+            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
+            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div>
+                <h2>파일 관리</h2>
+                <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
+                <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
+                <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
+                <button class="btn" onclick="window.location.href='/file_search'">📚 문서내용 검색</button>
+            </div>
+            <div>
+                <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
             </div>
         </div>
-        
-        <!-- 기능 선택 네비게이션 -->
-        <div class="content-card">
-            <h2>기능 선택</h2>
-            <div class="button-container">
-                <a href="/file_upload" class="upload-link">파일업로드</a>
-                <a href="/folder_upload" class="folder-link">폴더 업로드</a>
-                <a href="/vectorstore" class="vector-link">벡터스토어 만들기</a>
-                <a href="/file_search" class="search-link">문서내용 검색파일</a>
-            </div>
-        </div>
-        
-        <div class="content-card">
-            <h2>폴더를 선택해서 업로드하세요</h2>
-            <form id="folderUploadForm" enctype="multipart/form-data">
-                <div class="file-input-wrapper">
-                    <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*">
-                    <label for="folderInput" class="file-label">📂 폴더 선택</label>
+
+        <!-- 메인 -->
+        <div class="main">
+            <div class="summary">
+                <h2>📁 폴더 업로드</h2>
+                
+                <!-- 폴더 업로드 섹션 -->
+                <div class="summary-box">
+                    <h3>폴더를 선택해서 업로드하세요:</h3>
+                    <form id="folderUploadForm" enctype="multipart/form-data">
+                        <div class="file-input-wrapper" id="dropZone" style="position: relative;">
+                            <input type="file" id="folderInput" name="files" webkitdirectory multiple accept="*/*">
+                            <label for="folderInput" class="file-label">
+                                <span style="font-size: 48px; margin-bottom: 16px;">📂</span>
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                                    여기를 클릭하여<br>
+                                    폴더를 선택하세요
+                                </div>
+                                <div style="font-size: 14px; color: #666;">
+                                    폴더 내의 모든 파일이 업로드됩니다
+                                </div>
+                            </label>
+                        </div>
+                        <div id="message" class="message"></div>
+                        <button type="submit" id="uploadButton" class="upload-btn" style="display: none; margin-top: 15px;">📤 폴더 업로드</button>
+                    </form>
                 </div>
-                <div id="message" class="message"></div>
-                <button type="submit" id="uploadButton" class="upload-btn" style="display: none;">📤 폴더 업로드</button>
-            </form>
-        </div>
-        
-        <!-- 파일 검색 섹션 -->
-        <div class="content-card">
-            <h2>파일 찾기</h2>
-            <div class="search-container">
-                <input type="text" id="fileSearchInput" placeholder="파일명을 입력하세요..." class="search-input">
-                <button type="button" id="fileSearchBtn" class="search-btn">찾기</button>
-                <button type="button" id="fileSearchReset" class="search-reset-btn">전체 보기</button>
+                
+                <!-- 파일 검색 섹션 -->
+                <div class="summary-box">
+                    <h3>파일 찾기:</h3>
+                    <div class="search-container" style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
+                        <input type="text" id="fileSearchInput" placeholder="파일명을 입력하세요..." class="search-input">
+                        <button type="button" id="fileSearchBtn" class="btn" style="padding: 12px 24px;">찾기</button>
+                        <button type="button" id="fileSearchReset" class="btn" style="padding: 12px 24px; background: #999;">전체 보기</button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+                
+                <!-- 업로드된 파일 목록 -->
+                <div class="summary-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">업로드된 파일 목록:</h3>
+                        <button id="deleteAllBtn" onclick="deleteAllFilesOnPage()" class="btn" style="padding: 10px 24px; background: #f5576c; display: none;">
+                            🗑️ 현재 페이지 전체 삭제
+                        </button>
+                    </div>
+                    <div id="fileList" class="file-list">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">순번</th>
+                                    <th>파일명</th>
+                                    <th>크기</th>
+                                    <th>업로드 날짜</th>
+                                    <th>삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fileTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #666; padding: 15px;">불러오는 중...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" style="margin-top: 20px;"></div>
+                </div>
             </div>
-            <div id="searchResults" class="search-results"></div>
-        </div>
-        
-        <div class="content-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0;">업로드된 파일 목록</h2>
-                <button id="deleteAllBtn" onclick="deleteAllFilesOnPage()" style="padding: 10px 24px; background: #f5576c; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: none;">
-                    🗑️ 현재 페이지 전체 삭제
-                </button>
-            </div>
-            <div id="fileList" class="file-list">
-                <table class="file-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">순번</th>
-                            <th>파일명</th>
-                            <th>크기</th>
-                            <th>업로드 날짜</th>
-                            <th>삭제</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fileTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted);">불러오는 중...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="pagination"></div>
         </div>
     </div>
 
@@ -304,9 +326,9 @@
                     const fileSize = formatFileSize(file.size);
                     
                     fileListHTML += `<tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
-                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${rowIndex++}</td>
+                        <td style="padding: 6px; text-align: center; color: #666;">${rowIndex++}</td>
                         <td style="padding: 6px; word-break: break-all;">${fileName}</td>
-                        <td style="padding: 6px; text-align: right; color: var(--text-muted);">${fileSize}</td>
+                        <td style="padding: 6px; text-align: right; color: #666;">${fileSize}</td>
                     </tr>`;
                 }
                 
@@ -325,7 +347,7 @@
                     const fileSize = formatFileSize(file.size);
                     
                     fileListHTML += `<tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
-                        <td style="padding: 6px; text-align: center; color: var(--text-muted);">${rowIndex++}</td>
+                        <td style="padding: 6px; text-align: center; color: #666;">${rowIndex++}</td>
                         <td style="padding: 6px; word-break: break-all; color: #f5576c; text-decoration: line-through;">${fileName}</td>
                         <td style="padding: 6px; text-align: right; color: #f5576c;">${fileSize}</td>
                     </tr>`;
@@ -345,13 +367,13 @@
                 const finalHTML = `
                     <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <div style="margin-bottom: 16px;">
-                            <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;">📂 선택된 폴더:</div>
-                            <div style="font-size: 14px; color: var(--text-primary); word-break: break-all; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 4px; font-family: 'Courier New', monospace;">
+                            <div style="font-size: 16px; font-weight: 600; color: #6a4c93; margin-bottom: 8px;">📂 선택된 폴더:</div>
+                            <div style="font-size: 14px; color: #333; word-break: break-all; padding: 10px; background: rgba(106, 76, 147, 0.1); border-radius: 4px; font-family: 'Courier New', monospace;">
                                 ${folderDisplay || folderName || '폴더'}
                             </div>
                         </div>
                         <div>
-                            <div style="font-size: 16px; font-weight: 600; color: var(--primary-color); margin-bottom: 12px;">📄 폴더 내 파일 (총 ${files.length}개):</div>
+                            <div style="font-size: 16px; font-weight: 600; color: #6a4c93; margin-bottom: 12px;">📄 폴더 내 파일 (총 ${files.length}개):</div>
                             <div style="max-height: 350px; overflow-y: auto;">
                                 ${fileListHTML}
                             </div>
@@ -584,7 +606,7 @@
                     // 파일 목록 HTML 생성
                     const fileListHtml = currentFiles.map((file, index) => `
                         <tr>
-                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${data.files.length - startIndex - index}</td>
+                            <td style="text-align: center; font-weight: 600; color: #6a4c93;">${data.files.length - startIndex - index}</td>
                             <td>${file.filename}</td>
                             <td>${formatFileSize(file.size)}</td>
                             <td>${formatDate(file.uploadDate)}</td>
@@ -618,7 +640,7 @@
                         });
                     });
                 } else {
-                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
+                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">업로드된 파일이 없습니다.</td></tr>';
                     document.getElementById('pagination').innerHTML = '';
                     const deleteAllBtn = document.getElementById('deleteAllBtn');
                     if (deleteAllBtn) {
@@ -718,7 +740,7 @@
             const searchTerm = fileSearchInput.value.toLowerCase().trim();
             
             if (searchTerm === '') {
-                searchResults.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">검색어를 입력해주세요.</p>';
+                searchResults.innerHTML = '<p style="color: #666; font-size: 12px;">검색어를 입력해주세요.</p>';
                 return;
             }
             
@@ -737,7 +759,7 @@
                     </div>
                 `).join('');
             } else {
-                searchResults.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">검색 결과가 없습니다.</p>';
+                searchResults.innerHTML = '<p style="color: #666; font-size: 12px;">검색 결과가 없습니다.</p>';
             }
         }
         
@@ -779,7 +801,7 @@
                     // 파일 목록 HTML 생성
                     const fileListHtml = currentFiles.map((file, index) => `
                         <tr>
-                            <td style="text-align: center; font-weight: 600; color: var(--primary-color);">${data.files.length - startIndex - index}</td>
+                            <td style="text-align: center; font-weight: 600; color: #6a4c93;">${data.files.length - startIndex - index}</td>
                             <td>${file.filename}</td>
                             <td>${formatFileSize(file.size)}</td>
                             <td>${formatDate(file.uploadDate)}</td>
@@ -803,7 +825,7 @@
                         deleteAllBtn.style.display = 'block';
                     }
                 } else {
-                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">업로드된 파일이 없습니다.</td></tr>';
+                    document.getElementById('fileTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">업로드된 파일이 없습니다.</td></tr>';
                     document.getElementById('pagination').innerHTML = '';
                     allFiles = [];
                 }
