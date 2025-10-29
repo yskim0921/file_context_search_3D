@@ -507,12 +507,12 @@ def answer_generator_agent(state: AgentState):
         {query}
 
         ### 답변:
+        ==최종결론==
         위 내용에 관련된 파일명을 {search_summary}에서 찾아서 파일명만 알려줘
         # 그외에 답은 하지말아줘
         # 관련성 높은거 순으로 3개 알려줘(파일명-요약-키워드-유형)
-        
-        ==최종결론==
-        # 결론적으로 어떤파일을 추천하는지 1개만 알려줘(파일명-요약)
+        # 결론적으로 어떤파일을 추천하는지 1개만 알려줘
+        # (파일명-요약)
         """
         )
     chain = prompt | CHAT_LLM | StrOutputParser()

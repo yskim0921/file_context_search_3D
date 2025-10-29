@@ -507,14 +507,11 @@ def answer_generator_agent(state: AgentState):
         {query}
 
         ### 답변:
-        위 내용에 관련된 파일명을 {search_summary}에서 찾아서 파일명만 알려줘
-        # 그외에 답은 하지말아줘
-        # 관련성 높은거 순으로 3개 알려줘(파일명-요약-키워드-유형)
-        
         ==최종결론==
-        # 결론적으로 어떤파일을 추천하는지 1개만 알려줘(파일명-요약)
+        찾은 문서중에 가장 관련이 높은 파일을 찾아주고 자세한 파일내용 설명해줘
+        (순위, 무슨파일인지, 어디에 있는지, 요약은 무엇인지, 질문에 포함되는 문서키워드 등)
         """
-        )
+    )
     chain = prompt | CHAT_LLM | StrOutputParser()
     result = chain.invoke({
         "search_summary": search_summary,

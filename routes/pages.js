@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 
 // ============================================
@@ -27,6 +28,10 @@ router.get('/vectorstore', (req, res) => {
 
 router.get('/file_search', (req, res) => {
   res.render('file_search');
+});
+
+router.get('/home', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'home.html'));
 });
 
 module.exports = router;

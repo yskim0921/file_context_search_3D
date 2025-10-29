@@ -1,0 +1,292 @@
+body {
+  font-family: Pretendard, sans-serif;
+  background: #f3f5fa;
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: #e8d7f1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  padding: 30px;
+  gap: 30px;
+  background: #f9fafc;
+}
+
+.summary {
+  flex: 2;
+  background: #fffef9;
+  border-radius: 16px;
+  padding: 36px 48px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 2px solid #e0dfda;
+  background-image: repeating-linear-gradient(#fffef9 0px, #fffef9 23px, #f5f3eb 24px);
+  display: flex;
+  flex-direction: column;
+}
+
+.summary h2 {
+  font-size: 22px;
+  color: #4b3a70;
+  border-bottom: 2px solid #d5cde3;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.summary h3 {
+  margin: 18px 0 10px;
+  color: #333;
+  font-size: 17px;
+}
+
+.summary-box {
+  background: #ffffffcc;
+  border: 1.5px solid #e3dee9;
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1.8;
+  resize: none;
+  outline: none;
+  color: #333;
+}
+
+#topic_summary {
+  height: 60px;
+}
+
+#content_summary {
+  height: 260px;
+  overflow-y: auto;
+}
+
+#decisions {
+  min-height: 180px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0;
+  padding-left: 0;
+}
+
+#decisions li {
+  list-style: none;
+  margin-bottom: 6px;
+  padding-left: 6px;
+}
+
+#decisions li::before {
+  content: "📌 ";
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.calendar-card,
+.todo-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+#calendar {
+  max-width: 100%;
+}
+
+#todoList li {
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f9f9f9;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+input[type="checkbox"] {
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #6a4c93;
+  color: white;
+  font-weight: bold;
+}
+
+.btn:hover {
+  background: #5a3c83;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 350px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content ul {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-left: 0;
+}
+
+.modal-content li {
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.modal-content li:hover {
+  background: #f3f3f3;
+}
+
+.inline-flex {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 모달 제목 스타일 */
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #4b3a70;
+  font-size: 18px;
+}
+
+/* 모달 내 라벨 스타일 */
+.modal-content label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 모달 내 입력 필드 스타일 */
+.modal-content input,
+.modal-content select {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+  outline: none;
+  border-color: #6a4c93;
+}
+
+/* TODO 카드 제목 */
+#todoTitle {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #4b3a70;
+  font-size: 18px;
+}
+
+/* TODO 리스트 기본 스타일 */
+#todoList {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+/* 모달 내 TODO 리스트 */
+#todoModalList {
+  list-style: none;
+  padding-left: 0;
+  margin: 10px 0;
+}
+
+#todoModalList li {
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  background: #f9f9f9;
+}
+
+/* 모달 내 완료된 회의 목록 */
+#doneList,
+#wavList {
+  list-style: none;
+  padding-left: 0;
+}
+
+#doneList li,
+#wavList li {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: #f9f9f9;
+  transition: background 0.2s;
+}
+
+#doneList li:hover,
+#wavList li:hover {
+  background: #e8d7f1;
+}
+
+/* 사이드바 버튼 간격 */
+.sidebar .btn {
+  width: 100%;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.sidebar h2 {
+  margin-top: 0;
+  color: #4b3a70;
+  font-size: 24px;
+}
+
+.sidebar p {
+  margin: 5px 0 15px;
+  color: #666;
+  font-size: 13px;
+}

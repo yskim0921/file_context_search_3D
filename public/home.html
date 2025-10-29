@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>A.I.M.A 회의 요약</title>
+
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+  <!-- ✅ CSS 경로 수정 -->
+  <link rel="stylesheet" href="/css/home.css">
+</head>
+
+<body>
+  <!-- (HTML 내용 동일) -->
+  <div class="container">
+    <!-- 사이드바 -->
+    <div class="sidebar">
+      <div>
+        <h2>A.I.M.A</h2>
+        <p>AI Meeting Assistant</p>
+        <button class="btn" id="newMeetingBtn">+ 새 회의</button>
+        <button class="btn" id="meetingListBtn">📁 회의 목록</button>
+      </div>
+    </div>
+
+    <!-- 메인 -->
+    <div class="main">
+      <div class="summary">
+        <h2>🗒 회의록</h2>
+        <div class="summary-box">
+          <h3>주제:</h3>
+          <textarea id="topic_summary" readonly></textarea>
+        </div>
+        <div class="summary-box">
+          <h3>내용 요약:</h3>
+          <textarea id="content_summary" readonly></textarea>
+        </div>
+        <div class="summary-box">
+          <h3>결정사항:</h3>
+          <ul id="decisions"></ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 모달 영역 -->
+  <div class="modal" id="fileModal">
+    <div class="modal-content">
+      <h3>서버의 회의 음성 선택</h3>
+      <ul id="wavList"></ul>
+      <div style="text-align:right;">
+        <button class="btn" id="closeModalBtn" style="background:#999;">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="listModal">
+    <div class="modal-content">
+      <h3>📁 분석 완료된 회의 목록</h3>
+      <ul id="doneList"></ul>
+      <div style="text-align:right;">
+        <button class="btn" id="closeListBtn" style="background:#999;">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <h3>액션아이템 수정</h3>
+      <label for="editName">담당자:</label><br />
+      <select id="editName" style="width:100%; padding:6px; margin-bottom:10px;">
+        <option value="">-- 담당자 선택 --</option>
+        <option>철우</option><option>윤성</option><option>정우</option>
+        <option>창용</option><option>용재</option><option>소라</option>
+      </select><br />
+      <label for="editDue">기한(YYYY-MM-DD):</label><br />
+      <input id="editDue" type="date" style="width:100%; padding:6px;" /><br /><br />
+      <div class="inline-flex" style="justify-content:flex-end;">
+        <button class="btn" id="saveEditBtn">저장</button>
+        <button class="btn" id="closeEditBtn" style="background:#ccc; color:#000;">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="todoModal">
+    <div class="modal-content">
+      <h3 id="todoModalTitle">🗓 To-Do List</h3>
+      <ul id="todoModalList"></ul>
+      <div style="text-align:right; margin-top:10px;">
+        <button class="btn" id="closeTodoModalBtn" style="background:#999;">닫기</button>
+      </div>
+    </div>
+  </div>
+  <!-- ✅ JS 경로 수정 -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

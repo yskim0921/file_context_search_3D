@@ -34,53 +34,58 @@ def build_rag_chroma():
     documents = []
 
     try:
-        # MySQL 연결
+        # ✅ MySQL 연결
         conn = pymysql.connect(**DB_CONFIG)
         print("✅ MySQL 연결 성공")
 
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT id, title, summary FROM documents")
+        # ✅ DictCursor 사용 → 컬럼명을 키로 접근 가능
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT id, file_name, title, summary FROM documents")
             rows = cursor.fetchall()
 
             if not rows:
                 print("⚠️ 로드된 데이터가 없습니다. 'documents' 테이블을 확인해주세요.")
                 return
 
-            # Document 객체 리스트 생성
+            # ✅ Document 객체 생성
             for row in rows:
-                doc_id = row[0]
-                title_text = (row[1] or "").strip()
-                summary_text = (row[2] or "").strip()
+                doc_id = row["id"]
+                file_name = (row.get("file_name") or "").strip()
+                title_text = (row.get("title") or "").strip()
+                summary_text = (row.get("summary") or "").strip()
 
+                # 제목과 요약 결합
                 if title_text and summary_text:
                     combined_text = f"{title_text}. {summary_text}"
                 elif title_text:
                     combined_text = title_text
-                else:
+                elif summary_text:
                     combined_text = summary_text
-
-                if not combined_text:
+                else:
                     continue
 
-                doc = Document(
+                documents.append(Document(
                     page_content=combined_text,
                     metadata={
                         "source": "mysql",
                         "table": "documents",
                         "id": doc_id,
-                        "title": title_text
+                        "file_name": file_name,
+                        "title": title_text,
+                        "summary": summary_text
                     }
-                )
-                documents.append(doc)
+                ))
 
             print(f"✅ MySQL에서 {len(documents)}개 문서 로드 완료")
 
-            # 상위 5개 문서 미리보기
+            # 상위 5개 미리보기
             for i, doc in enumerate(documents[:5]):
-                print(f"\n--- 문서 #{i + 1} (ID: {doc.metadata.get('id', 'N/A')}) ---")
-                print(f"  Title: {doc.metadata.get('title', '')}")
-                print(f"  Metadata: {doc.metadata}")
-                print(f"  Content (일부): {doc.page_content[:200]}...")
+                print(f"\n--- 문서 #{i + 1} ---")
+                print(f"ID: {doc.metadata['id']}")
+                print(f"제목: {doc.metadata['title']}")
+                print(f"요약: {doc.metadata['summary']}")
+                print(f"파일명: {doc.metadata['file_name']}")
+                print(f"내용 일부: {doc.page_content[:150]}...")
 
     except pymysql.Error as err:
         print(f"❌ MySQL 오류: {err}")
@@ -90,70 +95,77 @@ def build_rag_chroma():
             conn.close()
             print("🔒 MySQL 연결 해제")
 
+    # ✅ 문서가 없으면 중단
     if not documents:
         print("⚠️ 유효한 문서가 없어 벡터스토어를 생성하지 않습니다.")
         return
 
-    # 텍스트 분할 (청킹)
+    # ==============================
+    # 3. 텍스트 분할 (청킹)
+    # ==============================
     splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=50)
     split_docs = splitter.split_documents(documents)
     print(f"\n✅ 청킹 완료. 총 {len(split_docs)}개 청크 생성")
 
-    # 임베딩 모델 설정
+    # ==============================
+    # 4. 임베딩 설정
+    # ==============================
     try:
         embeddings = OllamaEmbeddings(model="exaone3.5:2.4b")
-        print("✅ 임베딩 모델 설정 완료")
+        print("✅ 임베딩 모델 설정 완료 (exaone3.5:2.4b)")
     except Exception as e:
         print(f"❌ 임베딩 모델 설정 오류: {e}")
-        print("   Ollama 서버가 실행 중인지, 임베딩 가능한 모델인지 확인하세요.")
+        print("   Ollama 서버가 실행 중인지, 모델이 설치되어 있는지 확인하세요.")
         return
 
     # ==============================
-    # ⏳ 벡터스토어 생성 및 저장 (날짜시간 경로)
+    # 5. 벡터스토어 생성 및 저장 (날짜시간 경로)
     # ==============================
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     rag_path = f"./python/vector_store/rag_chroma/documents/{now}/"
-
-    # 폴더 자동 생성
     os.makedirs(rag_path, exist_ok=True)
 
     print(f"\n⏳ 벡터스토어 생성 중... (경로: {rag_path})")
 
-    db = Chroma.from_documents(
-        documents=split_docs,
-        embedding=embeddings,
-        persist_directory=rag_path
-    )
-    db.persist()
-
-    print(f"\n🎉 RAG Chroma 벡터스토어 구축 완료!")
-    print(f"   저장 경로: {rag_path}")
+    try:
+        db = Chroma.from_documents(
+            documents=split_docs,
+            embedding=embeddings,
+            persist_directory=rag_path
+        )
+        # persist() is deprecated in newer versions - data is automatically persisted
+        print(f"🎉 RAG Chroma 벡터스토어 구축 완료!")
+        print(f"   저장 경로: {rag_path}")
+    except Exception as e:
+        print(f"❌ 벡터스토어 생성 오류: {e}")
+        return
 
     # ==============================
-    # MySQL에 벡터스토어 정보 저장
+    # 6. MySQL에 벡터스토어 정보 저장
     # ==============================
     try:
         conn = pymysql.connect(**DB_CONFIG)
         with conn.cursor() as cursor:
-            # vectorStore 테이블에 정보 저장
             sql = """
                 INSERT INTO vectorStore (folder, count, created_at)
                 VALUES (%s, %s, %s)
             """
-            cursor.execute(sql, (now, len(documents), datetime.now()))
+            cursor.execute(sql, (now, len(split_docs), datetime.now()))
             conn.commit()
+
         print(f"✅ 벡터스토어 정보를 MySQL에 저장 완료")
         print(f"   폴더: {now}")
-        print(f"   문서 수량: {len(documents)}개")
+        print(f"   문서 수량: {len(split_docs)}개")
     except pymysql.Error as err:
         print(f"⚠️ MySQL 저장 오류: {err}")
     finally:
         if conn:
             conn.close()
+            print("🔒 MySQL 연결 해제")
 
 
 # ==============================
-# 3. 실행부
+# 7. 실행부
 # ==============================
 if __name__ == "__main__":
     build_rag_chroma()
