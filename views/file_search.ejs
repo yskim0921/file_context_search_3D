@@ -102,9 +102,131 @@
             font-weight: 700;
             letter-spacing: 2px;
         }
+        
+        /* 확인 모달 스타일 */
+        .modal-content-confirm {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            min-width: 400px;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .modal-header-confirm h2 {
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .modal-body-confirm {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .modal-body-confirm p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .modal-footer-confirm {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .modal-btn-confirm {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .modal-btn-confirm.cancel {
+            background: #e3dee9;
+            color: #333;
+        }
+        
+        .modal-btn-confirm.cancel:hover {
+            background: #d0cbd6;
+        }
+        
+        .modal-btn-confirm.confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .modal-btn-confirm.confirm:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8a 100%);
+            transform: translateY(-1px);
+        }
+        
+        /* 다운로드 버튼 스타일 */
+        .download-btn {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+        
+        .download-btn:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
+    <!-- 확인 모달 -->
+    <div id="confirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content-confirm">
+            <div class="modal-header-confirm">
+                <h2>다운로드 확인</h2>
+            </div>
+            <div class="modal-body-confirm">
+                <p id="confirmMessage">파일을 다운로드하시겠습니까?</p>
+            </div>
+            <div class="modal-footer-confirm">
+                <button class="modal-btn-confirm cancel" onclick="closeConfirmModal(true)">취소</button>
+                <button class="modal-btn-confirm confirm" onclick="confirmDownload()">다운로드</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 다운로드 진행 모달 -->
+    <div id="downloadProgressModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content-progress">
+            <div class="modal-header-progress">
+                <h2>파일 다운로드</h2>
+            </div>
+            <div class="modal-body-progress">
+                <div class="progress-status" id="downloadProgressStatus">다운로드 중입니다...</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="downloadProgressBar" style="width: 0%;"></div>
+                </div>
+                <div class="progress-percentage" id="downloadProgressPercentage">0%</div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 진행 상황 모달 -->
     <div id="progressModal" class="modal-overlay" style="display: none;">
         <div class="modal-content-progress">
@@ -121,21 +243,13 @@
         </div>
     </div>
 
-    <!-- 상단 헤더 -->
-    <div class="top-header">
-        <h1>📚 문서내용 검색</h1>
-        <div class="top-header-nav">
-            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
-            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
-        </div>
-    </div>
-
     <div class="container">
         <!-- 사이드바 -->
         <div class="sidebar">
             <div>
                 <h2>파일 관리</h2>
                 <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
                 <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
                 <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
                 <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
@@ -589,6 +703,28 @@
             searchHistory.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
+        // AI 답변에서 최종결론 부분 강조하는 함수
+        function formatAIAnswer(answer) {
+            if (!answer) return answer;
+            
+            // "최종결론" 또는 "최종 결론"으로 시작하는 부분부터 끝까지 찾기
+            const conclusionPattern = /(최종\s*결론[^\n]*\n?[\s\S]*$)/i;
+            const match = answer.match(conclusionPattern);
+            
+            if (match) {
+                const beforeConclusion = answer.substring(0, match.index);
+                const conclusionPart = match[0];
+                
+                // 최종결론 부분을 큰 폰트로 포맷팅
+                return beforeConclusion + 
+                    '<div style="font-size: 24px; font-weight: 700; color: var(--primary-color); margin-top: 20px; margin-bottom: 10px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%); border-left: 4px solid var(--primary-color); border-radius: 6px; white-space: pre-wrap; line-height: 1.8;">' + 
+                    conclusionPart.trim() + 
+                    '</div>';
+            }
+            
+            return answer;
+        }
+        
         // AI 검색 결과 확장 함수
         function expandSearchResult(query, aiAnswer, htmlFilePath, barChartPath, chromaPath, rankingResult) {
             let resultHTML = `
@@ -612,12 +748,13 @@
             
             // AI 답변 표시
             if (aiAnswer) {
+                const formattedAnswer = formatAIAnswer(aiAnswer);
                 resultHTML += `
                     <div style="margin-bottom: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
                         <div class="file-item" style="margin-bottom: 10px;">
                             <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
-                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${aiAnswer}</div>
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${formattedAnswer}</div>
                             </div>
                         </div>
                     </div>
@@ -632,12 +769,25 @@
                     if (Array.isArray(rankingList) && rankingList.length > 0) {
                         resultHTML += `
                             <div style="margin-top: 20px;">
-                                <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 순위</h3>
+                                <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 리스트</h3>
                                 <div style="background: var(--bg-secondary); border-radius: 8px; overflow: hidden;">
                         `;
                         
                         rankingList.forEach((item, index) => {
                             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '💫';
+                            // 파일 경로에서 파일명 추출
+                            let downloadFilename = '';
+                            let downloadUrl = '';
+                            if (item.file_location) {
+                                const pathParts = item.file_location.split('/');
+                                downloadFilename = pathParts[pathParts.length - 1] || item.file_name || '';
+                                if (downloadFilename) {
+                                    downloadUrl = `/api/download/${encodeURIComponent(downloadFilename)}`;
+                                }
+                            } else if (item.file_name) {
+                                downloadFilename = item.file_name;
+                                downloadUrl = `/api/download/${encodeURIComponent(downloadFilename)}`;
+                            }
                             resultHTML += `
                                 <div style="padding: 18px; border-bottom: 1px solid var(--border-color); display: flex; align-items: flex-start; gap: 15px; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 8px;">
                                     <div style="font-size: 32px; flex-shrink: 0; padding-top: 4px;">${medal}</div>
@@ -645,9 +795,10 @@
                                         <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 8px; font-size: 18px;">
                                             📄 ${item.file_name || ''}
                                         </div>
-                                        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px;">
-                                            ${item.file_location ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px; align-items: center;">
+                                            ${item.file_location ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px; display: flex; align-items: center; gap: 10px;">
                                                 📁 ${item.file_location}
+                                                ${downloadFilename ? `<button class="download-btn" onclick="requestDownload('${downloadFilename.replace(/'/g, "\\'")}', '${(item.file_name || downloadFilename).replace(/'/g, "\\'")}')">다운로드</button>` : ''}
                                             </div>` : ''}
                                             <div style="font-size: 14px; color: white; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; font-weight: 600;">
                                                 ⭐ ${item.relevance}%
@@ -731,12 +882,13 @@
             
             // AI 답변 표시
             if (output) {
+                const formattedOutput = formatAIAnswer(output);
                 resultHTML += `
                     <div style="margin-bottom: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
                         <div class="file-item" style="margin-bottom: 10px;">
                             <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
-                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${safeOutput}</div>
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${formattedOutput}</div>
                             </div>
                         </div>
                     </div>
@@ -834,12 +986,13 @@
             // 1. AI 답변
             // ==========================================
             if (aiAnswer) {
+                const formattedAnswer = formatAIAnswer(aiAnswer);
                 resultHTML += `
                     <div style="margin-bottom: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--primary-color); font-size: 22px;">🤖 AI 답변</h3>
                         <div class="file-item" style="margin-bottom: 10px;">
                             <div style="padding: 16px; background: var(--bg-secondary); border-radius: 6px;">
-                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${aiAnswer}</div>
+                                <div style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 16px; line-height: 1.8; color: var(--text-primary);">${formattedAnswer}</div>
                             </div>
                         </div>
                     </div>
@@ -866,7 +1019,7 @@
                 console.log('Total items:', rankingResult.length);
                 resultHTML += `
                     <div style="margin-top: 20px;">
-                        <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 순위</h3>
+                        <h3 style="margin-bottom: 15px; color: var(--text-primary); font-size: 20px;">📊 검색 결과 리스트</h3>
                         <div style="background: var(--bg-secondary); border-radius: 8px; overflow: hidden;">
                 `;
                 
@@ -890,6 +1043,20 @@
                             .replace(/'/g, '&#039;');
                     };
                     
+                    // 파일 경로에서 파일명 추출
+                    let downloadFilename = '';
+                    let downloadUrl = '';
+                    if (fileLocation) {
+                        const pathParts = fileLocation.split('/');
+                        downloadFilename = pathParts[pathParts.length - 1] || item.file_name || '';
+                        if (downloadFilename) {
+                            downloadUrl = `/api/download/${encodeURIComponent(downloadFilename)}`;
+                        }
+                    } else if (item.file_name) {
+                        downloadFilename = item.file_name;
+                        downloadUrl = `/api/download/${encodeURIComponent(downloadFilename)}`;
+                    }
+                    
                     const safeKeywords = escapeHtml(keywords);
                     const safeFileLocation = escapeHtml(fileLocation);
                     const safeContent = escapeHtml(content);
@@ -903,9 +1070,10 @@
                                 <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 8px; font-size: 18px;">
                                     📄 ${safeFileName}
                                 </div>
-                                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px;">
-                                    ${safeFileLocation ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px;">
+                                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 8px; align-items: center;">
+                                    ${safeFileLocation ? `<div style="font-size: 14px; color: var(--text-muted); padding: 6px 12px; background: rgba(102, 126, 234, 0.1); border-radius: 4px; display: flex; align-items: center; gap: 10px;">
                                         📁 ${safeFileLocation}
+                                        ${downloadFilename ? `<button class="download-btn" onclick="requestDownload('${downloadFilename.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${safeFileName.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')">다운로드</button>` : ''}
                                     </div>` : ''}
                                     <div style="font-size: 14px; color: white; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; font-weight: 600;">
                                         ⭐ ${item.relevance}%
@@ -937,13 +1105,13 @@
                 if (!rankingResult) {
                     resultHTML += `
                         <div style="margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
-                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 순위 정보가 없습니다.</p>
+                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 리스트 정보가 없습니다.</p>
                         </div>
                     `;
                 } else {
                     resultHTML += `
                         <div style="margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
-                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 순위: ${rankingResult.length}개 항목</p>
+                            <p style="color: var(--text-muted); font-size: 16px;">📊 검색 결과 리스트: ${rankingResult.length}개 항목</p>
                         </div>
                     `;
                 }
@@ -1061,6 +1229,145 @@
         // 페이지 로드 시 파일 목록 및 검색 기록 표시
         loadAllFiles();
         loadSearchHistory();
+        
+        // 다운로드 관련 변수
+        let pendingDownload = {
+            filename: '',
+            displayName: ''
+        };
+        
+        // 다운로드 요청 함수
+        function requestDownload(filename, displayName) {
+            pendingDownload.filename = filename;
+            pendingDownload.displayName = displayName || filename;
+            
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmMessage = document.getElementById('confirmMessage');
+            confirmMessage.textContent = `"${pendingDownload.displayName}" 파일을 다운로드하시겠습니까?`;
+            confirmModal.style.display = 'flex';
+        }
+        
+        // 확인 모달 닫기
+        function closeConfirmModal(clearPending = false) {
+            const confirmModal = document.getElementById('confirmModal');
+            confirmModal.style.display = 'none';
+            if (clearPending) {
+                pendingDownload = { filename: '', displayName: '' };
+            }
+        }
+        
+        // 다운로드 확인 후 실행
+        function confirmDownload() {
+            // pendingDownload 값을 먼저 저장
+            const filename = pendingDownload.filename;
+            const displayName = pendingDownload.displayName;
+            
+            if (!filename) {
+                alert('다운로드할 파일이 없습니다.');
+                closeConfirmModal(true);
+                return;
+            }
+            
+            // 확인 모달 닫기 (pendingDownload는 유지)
+            closeConfirmModal(false);
+            
+            // 다운로드 진행 모달 표시
+            const downloadModal = document.getElementById('downloadProgressModal');
+            const downloadProgressBar = document.getElementById('downloadProgressBar');
+            const downloadProgressPercentage = document.getElementById('downloadProgressPercentage');
+            const downloadProgressStatus = document.getElementById('downloadProgressStatus');
+            
+            downloadModal.style.display = 'flex';
+            downloadProgressStatus.textContent = '다운로드 중입니다...';
+            downloadProgressBar.style.width = '0%';
+            downloadProgressPercentage.textContent = '0%';
+            
+            // 진행률 시뮬레이션 (0-90%)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                downloadProgressBar.style.width = progress + '%';
+                downloadProgressPercentage.textContent = Math.floor(progress) + '%';
+            }, 200);
+            
+            // 실제 다운로드 실행
+            const downloadUrl = `/api/download/${encodeURIComponent(filename)}`;
+            
+            // fetch를 사용한 다운로드 방식
+            fetch(downloadUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('파일 다운로드에 실패했습니다.');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // 진행률 완료
+                    clearInterval(interval);
+                    downloadProgressBar.style.width = '100%';
+                    downloadProgressPercentage.textContent = '100%';
+                    downloadProgressStatus.textContent = '다운로드가 완료되었습니다!';
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = displayName || filename;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    // pendingDownload 초기화
+                    pendingDownload = { filename: '', displayName: '' };
+                    
+                    // 정리 및 모달 닫기
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    // 2초 후 모달 닫기
+                    setTimeout(() => {
+                        downloadModal.style.display = 'none';
+                        downloadProgressBar.style.width = '0%';
+                        downloadProgressPercentage.textContent = '0%';
+                        downloadProgressStatus.textContent = '다운로드 중입니다...';
+                    }, 2000);
+                })
+                .catch(error => {
+                    clearInterval(interval);
+                    console.error('다운로드 오류:', error);
+                    downloadProgressBar.style.width = '0%';
+                    downloadProgressPercentage.textContent = '0%';
+                    downloadProgressStatus.textContent = '다운로드에 실패했습니다.';
+                    alert('파일 다운로드에 실패했습니다: ' + error.message);
+                    
+                    // pendingDownload 초기화
+                    pendingDownload = { filename: '', displayName: '' };
+                    
+                    // 모달 닫기
+                    setTimeout(() => {
+                        downloadModal.style.display = 'none';
+                        downloadProgressBar.style.width = '0%';
+                        downloadProgressPercentage.textContent = '0%';
+                        downloadProgressStatus.textContent = '다운로드 중입니다...';
+                    }, 2000);
+                });
+        }
+        
+        // 확인 모달 외부 클릭 시 닫기
+        document.getElementById('confirmModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeConfirmModal(true);
+            }
+        });
+        
+        // 다운로드 진행 모달 외부 클릭 방지
+        document.getElementById('downloadProgressModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                // 외부 클릭 시 닫지 않음 (다운로드 중)
+            }
+        });
     </script>
 </body>
 </html>

@@ -7,21 +7,13 @@
     <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
-    <!-- 상단 헤더 -->
-    <div class="top-header">
-        <h1>🔍 벡터스토어 만들기</h1>
-        <div class="top-header-nav">
-            <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
-            <button class="btn" onclick="window.location.href='/'">← 홈으로</button>
-        </div>
-    </div>
-
     <div class="container">
         <!-- 사이드바 -->
         <div class="sidebar">
             <div>
                 <h2>파일 관리</h2>
                 <p>File Manager</p>
+                <button class="btn" onclick="window.location.href='/file_manager'">📁 파일 관리</button>
                 <button class="btn" onclick="window.location.href='/file_upload'">📄 파일업로드</button>
                 <button class="btn" onclick="window.location.href='/folder_upload'">📁 폴더 업로드</button>
                 <button class="btn" onclick="window.location.href='/vectorstore'">🔍 벡터스토어 만들기</button>
@@ -257,7 +249,7 @@
             }
 
             // 모달 열기
-            progressModal.style.display = 'block';
+            progressModal.style.display = 'flex';
             statusText.textContent = '벡터스토어 생성을 시작합니다...';
             progressBar.style.width = '0%';
             progressBar.textContent = '0%';
@@ -265,8 +257,13 @@
             closeModalBtn.style.display = 'none';
             createVectorStoreBtn.disabled = true;
 
+            // 초기 진행률 표시
+            updateProgress(5, '벡터스토어 생성을 시작합니다...');
+
             try {
-                // API 호출
+                // API 호출 시작 - 진행률 업데이트
+                updateProgress(10, '서버에 요청을 보내는 중...');
+                
                 const response = await fetch('/api/create-vectorstore', {
                     method: 'POST',
                     headers: {
@@ -274,15 +271,65 @@
                     }
                 });
 
+                // 응답 대기 중 진행률 업데이트
+                updateProgress(20, '서버에서 처리 중...');
+
                 const data = await response.json();
 
                 if (data.success) {
-                    // 진행바 업데이트
-                    parseProgress(data.output || '');
+                    // 진행바 업데이트 - 단계별로 표시
+                    const output = data.output || '';
+                    
+                    // 출력이 있으면 단계별 진행률 표시
+                    if (output) {
+                        const lines = output.split('\n');
+                        let foundProgress = 20;
+                        let foundMessage = '처리 중...';
+                        
+                        // 출력에서 각 단계를 찾아서 진행률 업데이트 (순서대로)
+                        for (let line of lines) {
+                            if (line.includes('MySQL 연결 성공')) {
+                                foundProgress = 15;
+                                foundMessage = 'MySQL 연결 성공';
+                            } else if (line.includes('문서 로드 완료')) {
+                                const match = line.match(/(\d+)개 문서/);
+                                if (match) {
+                                    foundProgress = 30;
+                                    foundMessage = `${match[1]}개 문서 로드 완료`;
+                                }
+                            } else if (line.includes('청킹 완료')) {
+                                foundProgress = 50;
+                                foundMessage = '문서 청킹 완료';
+                            } else if (line.includes('임베딩 모델 설정 완료')) {
+                                foundProgress = 70;
+                                foundMessage = '임베딩 모델 설정 완료';
+                            } else if (line.includes('벡터스토어 생성 중')) {
+                                foundProgress = 85;
+                                foundMessage = '벡터스토어 생성 중...';
+                            } else if (line.includes('벡터스토어 구축 완료')) {
+                                foundProgress = 100;
+                                foundMessage = '벡터스토어 구축 완료!';
+                                break; // 완료되면 루프 종료
+                            }
+                        }
+                        
+                        // 최종 진행률 업데이트
+                        updateProgress(foundProgress, foundMessage);
+                        
+                        // 완료가 아니면 100%로 설정
+                        if (foundProgress < 100) {
+                            setTimeout(() => {
+                                updateProgress(100, '완료!');
+                            }, 200);
+                        }
+                    } else {
+                        // 출력이 없으면 완료로 표시
+                        updateProgress(100, '완료!');
+                    }
                     
                     // 완료 메시지
                     setTimeout(() => {
-                        const docCount = extractDocumentCount(data.output || '');
+                        const docCount = extractDocumentCount(output);
                         if (docCount) {
                             finalResult.style.display = 'block';
                             resultText.textContent = `✅ 벡터스토어 생성 완료! (${docCount}개 문서)`;
@@ -299,7 +346,7 @@
                 } else {
                     updateProgress(0, '오류 발생');
                     finalResult.style.display = 'block';
-                    resultText.textContent = '❌ 벡터스토어 생성 실패';
+                    resultText.textContent = '❌ 벡터스토어 생성 실패: ' + (data.message || '알 수 없는 오류');
                     resultText.style.color = 'red';
                     closeModalBtn.style.display = 'block';
                 }
@@ -401,7 +448,7 @@
                                     <div style="flex: 1;">
                                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                                             <div style="font-size: 18px; font-weight: 600; color: #6a4c93;">
-                                                ${item.rank}순위 - ${item.file_name}
+                                                검색리스트 ${item.rank} - ${item.file_name}
                                             </div>
                                             <div style="padding: 6px 16px; background: ${relevanceColor}; color: white; border-radius: 20px; font-weight: 700; font-size: 16px; box-shadow: 0 2px 8px ${relevanceColor}66;">
                                                 ${item.relevance}% 유사도

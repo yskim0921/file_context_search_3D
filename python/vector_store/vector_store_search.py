@@ -12,7 +12,10 @@ import json
 import pymysql
 from datetime import datetime
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import OllamaEmbeddings
+
+# 공통 모델 설정 import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.models import EMBEDDINGS
 
 
 # ================================================================
@@ -28,8 +31,7 @@ DB_CONFIG = {
     'charset': 'utf8mb4'
 }
 
-# 임베딩 모델
-EMBEDDINGS = OllamaEmbeddings(model="exaone3.5:2.4b")
+# 임베딩 모델은 config/models.py에서 import함
 
 
 # ================================================================

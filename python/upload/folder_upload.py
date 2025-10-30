@@ -1,8 +1,12 @@
 import os
+import sys
 import pymysql
 import re
-from langchain_community.llms import Ollama
 from langchain_core.prompts import PromptTemplate
+
+# 공통 모델 설정 import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.models import LLM
 
 # DB 접속 정보
 DB_CONFIG = {
@@ -85,7 +89,7 @@ def load_document(file_path: str):
 def summarize_with_llm(docs):
     """문서 요약 처리"""
     try:
-        llm = Ollama(model="exaone3.5:2.4b")
+        llm = LLM  # config/models.py에서 import한 모델 사용
         
         # 문서가 많으면 맨 앞 5개만 사용 (토큰 제한 방지)
         if len(docs) > 5:

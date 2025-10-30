@@ -6,12 +6,16 @@ LangChain + Ollama Embeddings으로 Chroma 벡터스토어를 생성하고
 """
 
 import os
+import sys
 import pymysql
 from datetime import datetime
 from langchain_core.documents import Document
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
+
+# 공통 모델 설정 import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.models import EMBEDDINGS
 
 
 # ==============================
@@ -108,11 +112,11 @@ def build_rag_chroma():
     print(f"\n✅ 청킹 완료. 총 {len(split_docs)}개 청크 생성")
 
     # ==============================
-    # 4. 임베딩 설정
+    # 4. 임베딩 설정 (공통 모델 설정에서 import)
     # ==============================
     try:
-        embeddings = OllamaEmbeddings(model="exaone3.5:2.4b")
-        print("✅ 임베딩 모델 설정 완료 (exaone3.5:2.4b)")
+        embeddings = EMBEDDINGS  # config/models.py에서 import한 모델 사용
+        print("✅ 임베딩 모델 설정 완료")
     except Exception as e:
         print(f"❌ 임베딩 모델 설정 오류: {e}")
         print("   Ollama 서버가 실행 중인지, 모델이 설치되어 있는지 확인하세요.")

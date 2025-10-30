@@ -120,6 +120,44 @@ router.delete('/delete-file/:filename', async (req, res) => {
   }
 });
 
+// 파일 다운로드 API
+router.get('/download/:filename', (req, res) => {
+  const filename = decodeURIComponent(req.params.filename);
+  
+  try {
+    const uploadDir = path.join(__dirname, '..', 'public', 'upload', 'files');
+    const filePath = path.join(uploadDir, filename);
+    
+    // 파일이 존재하는지 확인
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ 
+        success: false,
+        message: '파일을 찾을 수 없습니다.' 
+      });
+    }
+    
+    // 파일 다운로드
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error('파일 다운로드 오류:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ 
+            success: false,
+            message: '파일 다운로드에 실패했습니다.' 
+          });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('파일 다운로드 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '파일 다운로드에 실패했습니다.',
+      error: error.message 
+    });
+  }
+});
+
 // Python 스크립트 실행 API (conda 환경 사용)
 router.post('/run-python', express.json(), async (req, res) => {
   const { filePath } = req.body;

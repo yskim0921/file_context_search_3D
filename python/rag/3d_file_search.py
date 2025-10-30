@@ -1,10 +1,13 @@
 from typing import TypedDict, List, Dict, Any
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_community.llms import Ollama
-from langchain_community.chat_models import ChatOllama
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import OllamaEmbeddings
+import sys
+import os
+
+# 공통 모델 설정 import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.models import EMBEDDINGS, LLM, CHAT_LLM
 from langgraph.graph import StateGraph, END # LangGraph 컴포넌트는 여전히 로직 제어
 
 import plotly.graph_objects as go
@@ -146,9 +149,7 @@ if not CHROMA_PATH:
     print("❌ ChromaDB 경로를 찾을 수 없습니다. 기본값을 사용합니다.")
     CHROMA_PATH = "./python/vector_store/rag_chroma/documents/20251024_174234/"
 
-EMBEDDINGS = OllamaEmbeddings(model="exaone3.5:2.4b")
-LLM = Ollama(model="exaone3.5:2.4b")
-CHAT_LLM = ChatOllama(model="exaone3.5:2.4b", temperature=0.1)
+# 모델 설정은 config/models.py에서 import함
 
 # ================================================================
 # 4. 노트북용 3D 시각화 클래스 (RAGNotebookVisualizer) - .py 스크립트 호환으로 수정
